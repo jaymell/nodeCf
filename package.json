@@ -1,0 +1,15 @@
+{
+  "name": "nodecf",
+  "version": "0.0.1",
+  "description": "for cloudformation-based deployments",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "aws-sdk": "^2.46.0",
+    "bluebird": "^3.5.0"
+  }
+}
