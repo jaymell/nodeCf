@@ -8,6 +8,10 @@
   },
   "author": "",
   "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "git+https://git@github.com/jaymell/nodeCf.git"
+  },
   "dependencies": {
     "ajv": "^5.0.1",
     "aws-sdk": "^2.46.0",
