@@ -1,8 +1,8 @@
 var Promise = require('bluebird');
 var nunjucks = require("nunjucks");
-var yaml = require('js-yaml');
 var _ = require('lodash');
 var Ajv = require('ajv');
+var fs = require('fs');
 
 // schema to validate stacks
 // defined in config files
@@ -60,7 +60,8 @@ var envConfigSchema = {
 function cfStack(spec) {
 
   return {
-    name: `${spec.environment}-${spec.application}-${spec.name}`,
+    name: spec.name,
+    deployName: `${spec.environment}-${spec.application}-${spec.name}`,
     environment: spec.environment,
     application: spec.application,
     deps: spec.deps,
@@ -70,17 +71,7 @@ function cfStack(spec) {
     tags: _.flattenDeep(_.map(spec.tags, function(i) {
                 return _.map(i, (v, k) => ({ Key: k, Value: v }));
               })),
-    // templateURL: spec.templateURL,
-    // deploy() {
-    //   return ensureBucket(cli, infraBucket)
-    //            .then(() => ensureAwsCfStack(cli, {
-    //              StackName: this.name,
-    //              Parameters: this.parameters,
-    //              Tags: this.tags,
-    //              TemplateURL: this.templateURL,
-    //            }))
-    //            .then(() => console.log(`deployed ${this.name}!`));
-    // } 
+    templateURL: spec.templateURL
   }
 };
 
@@ -108,8 +99,14 @@ function ensureBucket(cli, bucket) {
            .then(d => d ? Promise.resolve() : createBucket(cli, bucket))
 }
 
-function uploadTemplate() {
-
+function s3Upload(cli, bucket, src, dest) {
+  console.log('src: ', src);
+  var stream = fs.createReadStream(src);
+  return cli.upload({
+      Bucket: bucket,
+      Key: dest,
+      Body: stream
+    }).promise();
 }
 
 function awsCfStackExists(cli, stackName) {
@@ -126,7 +123,7 @@ function awsCfStackExists(cli, stackName) {
 }
 
 // may not need -- this is probably all it will be doing:
-function createAwsCfStack(cli, cfStack) {
+function createAwsCfStack(cli, params) {
   return cli.createStack(params).promise()
 }
 
@@ -159,6 +156,10 @@ function loadEnvConfig(env, globalVars, envVars, schema) {
 
   var myVars = _.extend(globalVars, envVars);
   myVars = parseConfig(myVars, JSON.parse(JSON.stringify(myVars)));
+
+  // FIXME: `env` is handled a bit sloppy, but slipping it in here prevents  
+  // needing to explicitly define environment in config file, which currently
+  // would be redundant: 
   myVars = _.extend(myVars, { environment: env });
   if (!(valid(myVars))) throw new Error('Invalid environment configuration!');
   return myVars;
@@ -173,48 +174,63 @@ function loadStackConfig(stackVars, envVars, schema) {
   _.forEach(myVars.stacks, function(v, k) {
     v.name = k;
     if (!valid(v)) throw new Error('Stack does not match schema!');
-    v.application = envConfig.application;
-    v.environment = envConfig.environment;
-    v.account = envConfig.account;
+    v.application = envVars.application;
+    v.environment = envVars.environment;
+    v.account = envVars.account;
   });
   return myVars;
 }
 
-function deploy(params) {
-  var stacks = params.stacks;
-  var cli = params.cli;
-  var infraBucket = params.infraBucket;
-  return ensureBucket(cli, infraBucket)
-         .then(() => Promise.each(stacks, () => ensureAwsCfStack( ))
-
-
-
-
-
-
-          ensureAwsCfStack(cli, {
-           StackName: this.name,
-           Parameters: this.parameters,
-           Tags: this.tags,
-           TemplateURL: this.templateURL,
-         }))
-         .then(() => console.log(`deployed ${this.name}!`));
-  } 
-}
-
-// FIXME: `env` is a bit sloppy, prevents needing to explicitly define
-// environment in config file, which is sort of redundant:
-module.exports = function(cli, env, envVars, globalVars, stackVars) {
-  envConfig = loadEnvConfig(env, globalVars, envVars, envConfigSchema);
-  stackConfig = loadStackConfig(stackVars, envConfig, cfStackConfigSchema);
-  
-  console.log('env: ', envConfig)
-  console.log('stacks: ', stackConfig)
-  stacks = _.map(stackConfig.stacks, v => cfStack(v))
-  deploy({ 
-    stacks: stackConfig.stacks, 
-    cli: cli, 
-    infraBucket: infraBucket,
-  })
-  return stacks;
+function defaultNodeCfConfig(application, env) {
+  return {
+    localCfTemplateDir: `./templates`,
+    s3CfTemplateDir: `/${application}/${env}/templates`,
+    s3LambdaDir: `/${application}/${env}/lambda`
+  }
 };
+
+module.exports = function(AWS, env, envVars, globalVars, stackVars, nodeCfConfig) {
+
+  
+  var envConfig = loadEnvConfig(env, globalVars, envVars, envConfigSchema);
+  var stackConfig = loadStackConfig(stackVars, envConfig, cfStackConfigSchema);
+  // TODO: add validator for nodeCfConfig:
+  var nodeCfConfig = nodeCfConfig || defaultNodeCfConfig(envConfig.application,
+      envConfig.environment);
+  var stacks = _.map(stackConfig.stacks, v => cfStack(v));
+
+  return {
+    envConfig: envConfig,
+    stackConfig: stackConfig,
+    nodeCfConfig: nodeCfConfig,
+    stacks: stacks,
+    deploy() {
+      var s3Cli = new AWS.S3();
+      var cfCli = new AWS.CloudFormation();
+      var infraBucket = envConfig.infraBucket;
+      // open file:
+      var srcDir = nodeCfConfig.localCfTemplateDir;
+      var destDir = nodeCfConfig.s3CfTemplateDir;
+
+      return ensureBucket(s3Cli, infraBucket)
+             .then(() => Promise.each(stacks, function(stack) {
+               var src = `${srcDir}/${stack.name}.yml`;
+               var timestamp = new Date().getTime();
+               var dest = `${destDir}/${stack.name}-${timestamp}.yml`;
+               return s3Upload(s3Cli, infraBucket, src, dest)
+                 .then(data => ensureAwsCfStack(cfCli, {
+                   StackName: stack.deployName,
+                   Parameters: stack.parameters,
+                   Tags: stack.tags,
+                   TemplateURL: data.Location,
+                 }))
+                 .then(() => console.log(`deployed ${stack.deployName}!`));
+             }));
+    }
+  }
+};
+
+// todo:
+// delete files after deployments regardless of success / failure
+// use waiter to print progress of stack deployment
+// better handling of environment as it's read by cloudformation params

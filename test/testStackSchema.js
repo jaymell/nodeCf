@@ -1,7 +1,7 @@
 var assert = require('assert');
 var nodeCf = require('../nodeCf.js');
 
-describe('cfStackSchema', function() {
+describe('cfStackConfigSchema', function() {
   describe('name', function() {
     it('should not have underscores', function() {
       assert.throws(() => nodeCf.cfStack({ name: "te_st", 

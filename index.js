@@ -23,16 +23,6 @@ var envVars = yaml.safeLoad(fs.readFileSync(`./config/${env}.yml`));
 var globalVars = yaml.safeLoad(fs.readFileSync(`./config/global.yml`));
 var stackVars = yaml.safeLoad(fs.readFileSync(`./config/stacks.yml`));
 
-cli = new AWS.CloudFormation()
-stacks = nodeCf(cli, env, envVars, globalVars, stackVars);
-console.log(JSON.stringify(stacks));
-// s3 = 'jaymell-my-bucket'
-// var obj = { name: "test", 
-//             account: "test", 
-//             environment: "test",
-//             parameters: [{"testParam1": "test1"}, {"testParam2": "test2"}],
-//             tags: [{"testTag1": "test1"}, {"testTag2": "test2"}],
-//             application: "test"
-//           }
-
-// var c = nodeCf.cfStack(cli, s3, obj)
+var cfStacks = nodeCf(AWS, env, envVars, globalVars, stackVars);
+console.log(JSON.stringify(cfStacks.stacks));
+cfStacks.deploy();
