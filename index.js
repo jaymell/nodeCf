@@ -3,22 +3,26 @@
 var AWS = require('aws-sdk');
 var Promise = require('bluebird');
 var fs = require('fs');
-var _ = require('lodash');
 var yaml = require('js-yaml');
 var nodeCf = require('./nodeCf.js');
 
 if (process.argv.length <= 2) {
-    console.log("Usage: " + __filename + " <environment name> [ + region ]");
+    console.log("Usage: " + __filename + " <environment name> [ -r <region> ] [ -p <profile>] ");
     process.exit(-1);
 }
- 
-var env = process.argv[2];
-var region = process.argv[3] || 'us-east-1';
-var profile = process.argv[4] || 'personal';
+
+var argv = require('minimist')(process.argv.slice(2));
+
+var env = argv['_'][0];
+var region = argv['r'] || 'us-east-1';
+var profile = argv['p'];
 
 AWS.config.setPromisesDependency(Promise);
-var credentials = new AWS.SharedIniFileCredentials({profile: profile});
-AWS.config.credentials = credentials;
+if (typeof profile !== 'undefined' && profile) {
+  var credentials = new AWS.SharedIniFileCredentials({profile: profile});
+  AWS.config.credentials = credentials;   
+}
+
 AWS.config.update({region: region});
 
 var envVars = yaml.safeLoad(fs.readFileSync(`./config/${env}.yml`));
