@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 var AWS = require('aws-sdk');
 var Promise = require('bluebird');
 var fs = require('fs');
