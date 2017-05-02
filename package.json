@@ -4,7 +4,8 @@
   "description": "for cloudformation-based deployments",
   "main": "index.js",
   "scripts": {
-    "test": "node_modules/.bin/mocha"
+    "test": "node_modules/.bin/mocha",
+    "lint": "node_modules/.bin/eslint ."
   },
   "author": "",
   "license": "UNLICENSED",
@@ -23,6 +24,8 @@
   "devDependencies": {
     "assert": "^1.4.1",
     "aws-sdk-mock": "^1.7.0",
+    "eslint": "^3.19.0",
     "mocha": "^3.3.0"
-  }
+  },
+  "bin" : { "nodeCf" : "./index.js" } 
 }

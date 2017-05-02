@@ -72,7 +72,7 @@ function cfStack(spec) {
                 return _.map(i, (v, k) => ({ Key: k, Value: v }));
               })),
     templateURL: spec.templateURL
-  }
+  };
 };
 
 // return promise that resolves to true/false or rejects with error
@@ -91,12 +91,12 @@ function bucketExists(cli, bucket) {
 }
 
 function createBucket(cli, bucket) {
-	return cli.createBucket({Bucket: bucket}).promise()
+	return cli.createBucket({Bucket: bucket}).promise();
 }
 
 function ensureBucket(cli, bucket) {
 	return bucketExists(cli, bucket)
-           .then(d => d ? Promise.resolve() : createBucket(cli, bucket))
+           .then(d => d ? Promise.resolve() : createBucket(cli, bucket));
 }
 
 function s3Upload(cli, bucket, src, dest) {
@@ -114,26 +114,35 @@ function awsCfStackExists(cli, stackName) {
            .then(() => Promise.resolve(true))
            .catch(function(e) {
              if (e.message.includes('does not exist')) {
-               return Promise.resolve(false)
+               return Promise.resolve(false);
              } 
              else { 
-              throw e 
+              throw e;
              }
-           })
+           });
 }
 
 // may not need -- this is probably all it will be doing:
 function createAwsCfStack(cli, params) {
-  return cli.createStack(params).promise()
+  console.log('calling createStack');
+  return cli.createStack(params).promise();
 }
 
 function ensureAwsCfStack(cli, params) {
   return awsCfStackExists(cli, params.StackName)
-           .then(r => (r ? updateAwsCfStack(cli, params) : createAwsCfStack(cli, params)))
+           .then(r => (r ? updateAwsCfStack(cli, params) : createAwsCfStack(cli, params)));
 }
 
 function updateAwsCfStack(cli, params) {
+  console.log('calling updateStack');
   return cli.updateStack(params).promise()
+            .catch(function(e) {
+              switch ( e.message ) {
+                case 'No updates are to be performed.':
+                  return Promise.resolve("No updates are to be performed");
+                default: 
+                  throw e;
+              }});
 }
 
 // allows for referencing other variables within the config;
@@ -186,7 +195,7 @@ function defaultNodeCfConfig(application, env) {
     localCfTemplateDir: `./templates`,
     s3CfTemplateDir: `/${application}/${env}/templates`,
     s3LambdaDir: `/${application}/${env}/lambda`
-  }
+  };
 };
 
 module.exports = function(AWS, env, envVars, globalVars, stackVars, nodeCfConfig) {
@@ -204,14 +213,13 @@ module.exports = function(AWS, env, envVars, globalVars, stackVars, nodeCfConfig
     stackConfig: stackConfig,
     nodeCfConfig: nodeCfConfig,
     stacks: stacks,
+
     deploy() {
       var s3Cli = new AWS.S3();
       var cfCli = new AWS.CloudFormation();
       var infraBucket = envConfig.infraBucket;
-      // open file:
       var srcDir = nodeCfConfig.localCfTemplateDir;
       var destDir = nodeCfConfig.s3CfTemplateDir;
-
       return ensureBucket(s3Cli, infraBucket)
              .then(() => Promise.each(stacks, function(stack) {
                var src = `${srcDir}/${stack.name}.yml`;
@@ -224,10 +232,15 @@ module.exports = function(AWS, env, envVars, globalVars, stackVars, nodeCfConfig
                    Tags: stack.tags,
                    TemplateURL: data.Location,
                  }))
+                 .then(function(data) {
+                   if ( data == "No updates are to be performed") return Promise.resolve();
+                   return cfCli.waitFor('stackCreateComplete', 
+                                                 {StackName: data.stackId}).promise();
+                 })
                  .then(() => console.log(`deployed ${stack.deployName}!`));
              }));
     }
-  }
+  };
 };
 
 // todo:
