@@ -182,8 +182,6 @@ function loadEnvConfig(env, region, globalVars, envVars, schema) {
 
 function isValidJsonSchema(schema, spec) {
   var ajv = new Ajv({ useDefaults: true });
-  console.log('schema: ', schema);
-  console.log('spec: ', spec);
   var valid = ajv.compile(schema);
   if (!(valid(spec))) return false;
   return true;
