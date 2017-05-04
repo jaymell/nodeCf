@@ -168,14 +168,12 @@ function parseConfig(myVars, templateVars) {
 // env-specific will overwrite any conflicting
 // global vars 
 function loadEnvConfig(env, region, globalVars, envVars, schema) {
-  var myVars = _.extend(globalVars, envVars);
-  myVars = parseConfig(myVars, JSON.parse(JSON.stringify(myVars)));
-
   // FIXME: `env` and `region` are handled a bit sloppy, but this
   // is current way to insert them into config, given that they are
   // supplied at runtime:
-  myVars = _.extend(myVars, { environment: env });
-  myVars = _.extend(myVars, { region: region });
+  var myVars = _.extend(globalVars, envVars, { environment: env, region: region });
+  myVars = parseConfig(myVars, JSON.parse(JSON.stringify(myVars)));
+
   if (!(isValidJsonSchema(schema, myVars))) {
     throw new Error('Invalid environment configuration!');
   }
@@ -184,6 +182,8 @@ function loadEnvConfig(env, region, globalVars, envVars, schema) {
 
 function isValidJsonSchema(schema, spec) {
   var ajv = new Ajv({ useDefaults: true });
+  console.log('schema: ', schema);
+  console.log('spec: ', spec);
   var valid = ajv.compile(schema);
   if (!(valid(spec))) return false;
   return true;
@@ -213,7 +213,7 @@ function defaultNodeCfConfig(application, env) {
 
 module.exports = function(AWS, env, region, envVars, globalVars, stackVars, nodeCfConfig) {
 
-  var envConfig = loadEnvConfig(env, globalVars, envVars, envConfigSchema);
+  var envConfig = loadEnvConfig(env, region, globalVars, envVars, envConfigSchema);
   var stackConfig = loadStackConfig(stackVars, envConfig, cfStackConfigSchema);
   // TODO: add validator for nodeCfConfig:
   var nodeCfConfig = nodeCfConfig || defaultNodeCfConfig(envConfig.application,
