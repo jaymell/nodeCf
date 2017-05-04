@@ -35,7 +35,8 @@ var cfStackConfigSchema = {
       additionalItems: false
     },
     deps: { type: "array", items: { type: "string" } }
-  }
+  },
+  required: ["name"]
 };
 
 var envConfigSchema = {
@@ -51,14 +52,14 @@ var envConfigSchema = {
         ]
     },
     environment: { type: "string" },
-    infraBucket: { type: "string" }
+    infraBucket: { type: "string" },
+    region: { type: "string" },
   },
-  required: ["account", "environment", "application", "infraBucket"]
+  required: ["account", "environment", "application", "infraBucket", "region"]
 };
 
 // primary object for stack objects
 function cfStack(spec) {
-
   return {
     name: spec.name,
     deployName: `${spec.environment}-${spec.application}-${spec.name}`,
@@ -100,7 +101,7 @@ function ensureBucket(cli, bucket) {
 }
 
 function s3Upload(cli, bucket, src, dest) {
-  console.log('src: ', src);
+  console.log(`uploading template ${src} to s3://${bucket}/${dest}`);
   var stream = fs.createReadStream(src);
   return cli.upload({
       Bucket: bucket,
@@ -124,8 +125,12 @@ function awsCfStackExists(cli, stackName) {
 
 // may not need -- this is probably all it will be doing:
 function createAwsCfStack(cli, params) {
-  console.log('calling createStack');
-  return cli.createStack(params).promise();
+  console.log(`creating cloudformation stack ${params.StackName}`);
+  return cli.createStack(params).promise()
+           .then(data => 
+             cli.waitFor('stackCreateComplete', 
+                         {StackName: data.stackId}).promise())
+           .catch(e =>  console.log('Error creating stack: ', e));
 }
 
 function ensureAwsCfStack(cli, params) {
@@ -134,15 +139,18 @@ function ensureAwsCfStack(cli, params) {
 }
 
 function updateAwsCfStack(cli, params) {
-  console.log('calling updateStack');
+  console.log(`updating cloudformation stack ${params.StackName}`);
   return cli.updateStack(params).promise()
-            .catch(function(e) {
-              switch ( e.message ) {
-                case 'No updates are to be performed.':
-                  return Promise.resolve("No updates are to be performed");
-                default: 
-                  throw e;
-              }});
+           .then(data => 
+             cli.waitFor('stackUpdateComplete', 
+                         {StackName: data.stackId}).promise())
+           .catch(function(e) {
+             switch ( e.message ) {
+               case 'No updates are to be performed.':
+                 return Promise.resolve("No updates are to be performed");
+               default: 
+                 throw e;
+           }});
 }
 
 // allows for referencing other variables within the config;
@@ -159,30 +167,35 @@ function parseConfig(myVars, templateVars) {
 // pass var objects; variables will be
 // env-specific will overwrite any conflicting
 // global vars 
-function loadEnvConfig(env, globalVars, envVars, schema) {
-  var ajv = new Ajv({ useDefaults: true });
-  var valid = ajv.compile(schema);
-
+function loadEnvConfig(env, region, globalVars, envVars, schema) {
   var myVars = _.extend(globalVars, envVars);
   myVars = parseConfig(myVars, JSON.parse(JSON.stringify(myVars)));
 
-  // FIXME: `env` is handled a bit sloppy, but slipping it in here prevents  
-  // needing to explicitly define environment in config file, which currently
-  // would be redundant: 
+  // FIXME: `env` and `region` are handled a bit sloppy, but this
+  // is current way to insert them into config, given that they are
+  // supplied at runtime:
   myVars = _.extend(myVars, { environment: env });
-  if (!(valid(myVars))) throw new Error('Invalid environment configuration!');
+  myVars = _.extend(myVars, { region: region });
+  if (!(isValidJsonSchema(schema, myVars))) {
+    throw new Error('Invalid environment configuration!');
+  }
   return myVars;
 }
 
-function loadStackConfig(stackVars, envVars, schema) {
+function isValidJsonSchema(schema, spec) {
   var ajv = new Ajv({ useDefaults: true });
   var valid = ajv.compile(schema);
+  if (!(valid(spec))) return false;
+  return true;
+}
+
+function loadStackConfig(stackVars, envVars, schema) {
   var myVars = parseConfig(stackVars, envVars);
 
   // validate and add config-specific properties:
   _.forEach(myVars.stacks, function(v, k) {
     v.name = k;
-    if (!valid(v)) throw new Error('Stack does not match schema!');
+    if (!isValidJsonSchema(schema, v)) throw new Error('Stack does not match schema!');
     v.application = envVars.application;
     v.environment = envVars.environment;
     v.account = envVars.account;
@@ -193,14 +206,13 @@ function loadStackConfig(stackVars, envVars, schema) {
 function defaultNodeCfConfig(application, env) {
   return {
     localCfTemplateDir: `./templates`,
-    s3CfTemplateDir: `/${application}/${env}/templates`,
-    s3LambdaDir: `/${application}/${env}/lambda`
+    s3CfTemplateDir: `${application}/${env}/templates`,
+    s3LambdaDir: `${application}/${env}/lambda`
   };
 };
 
-module.exports = function(AWS, env, envVars, globalVars, stackVars, nodeCfConfig) {
+module.exports = function(AWS, env, region, envVars, globalVars, stackVars, nodeCfConfig) {
 
-  
   var envConfig = loadEnvConfig(env, globalVars, envVars, envConfigSchema);
   var stackConfig = loadStackConfig(stackVars, envConfig, cfStackConfigSchema);
   // TODO: add validator for nodeCfConfig:
@@ -230,13 +242,7 @@ module.exports = function(AWS, env, envVars, globalVars, stackVars, nodeCfConfig
                    StackName: stack.deployName,
                    Parameters: stack.parameters,
                    Tags: stack.tags,
-                   TemplateURL: data.Location,
-                 }))
-                 .then(function(data) {
-                   if ( data == "No updates are to be performed") return Promise.resolve();
-                   return cfCli.waitFor('stackCreateComplete', 
-                                                 {StackName: data.stackId}).promise();
-                 })
+                   TemplateURL: data.Location}))
                  .then(() => console.log(`deployed ${stack.deployName}!`));
              }));
     }
@@ -246,4 +252,4 @@ module.exports = function(AWS, env, envVars, globalVars, stackVars, nodeCfConfig
 // todo:
 // delete files after deployments regardless of success / failure
 // use waiter to print progress of stack deployment
-// better handling of environment as it's read by cloudformation params
+// add region variable

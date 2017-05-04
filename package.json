@@ -26,7 +26,8 @@
     "assert": "^1.4.1",
     "aws-sdk-mock": "^1.7.0",
     "eslint": "^3.19.0",
-    "mocha": "^3.3.0"
+    "mocha": "^3.3.0",
+    "rewire": "^2.5.2"
   },
   "bin": {
     "nodeCf": "./index.js"

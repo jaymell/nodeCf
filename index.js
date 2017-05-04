@@ -29,6 +29,6 @@ var envVars = yaml.safeLoad(fs.readFileSync(`./config/${env}.yml`));
 var globalVars = yaml.safeLoad(fs.readFileSync(`./config/global.yml`));
 var stackVars = yaml.safeLoad(fs.readFileSync(`./config/stacks.yml`));
 
-var cfStacks = nodeCf(AWS, env, envVars, globalVars, stackVars);
-console.log(JSON.stringify(cfStacks.stacks));
+var cfStacks = nodeCf(AWS, env, region, envVars, globalVars, stackVars);
+// console.log(JSON.stringify(cfStacks.stacks));
 cfStacks.deploy();
