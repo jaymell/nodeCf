@@ -95,9 +95,9 @@ async function bucketExists(cli, bucket) {
   } catch (e) {
     switch (e.statusCode) {
       case 403:
-        return Promise.reject(new Error('403: You don\'t have permissions to access this bucket'));
+        throw new Error('403: You don\'t have permissions to access this bucket');
       case 404:
-        return Promise.resolve(false);
+        return false;
       default:
         throw e;
     }
@@ -173,7 +173,7 @@ async function updateAwsCfStack(cli, params) {
   } catch (e) {
     switch (e.message) {
       case 'No updates are to be performed.':
-        return Promise.resolve("No updates are to be performed");
+        return "No updates are to be performed";
       default:
         throw e;
     }
