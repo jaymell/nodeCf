@@ -123,7 +123,6 @@ function awsCfStackExists(cli, stackName) {
            });
 }
 
-// may not need -- this is probably all it will be doing:
 function createAwsCfStack(cli, params) {
   console.log(`creating cloudformation stack ${params.StackName}`);
   return cli.createStack(params).promise()
@@ -246,8 +245,3 @@ module.exports = function(AWS, env, region, envVars, globalVars, stackVars, node
     }
   };
 };
-
-// todo:
-// delete files after deployments regardless of success / failure
-// use waiter to print progress of stack deployment
-// add region variable
