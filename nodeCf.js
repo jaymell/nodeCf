@@ -1,12 +1,12 @@
-var Promise = require('bluebird');
-var nunjucks = require("nunjucks");
-var _ = require('lodash');
-var Ajv = require('ajv');
-var fs = require('fs');
+const Promise = require('bluebird');
+const nunjucks = require("nunjucks");
+const _ = require('lodash');
+const Ajv = require('ajv');
+const fs = require('fs');
 
 // schema to validate stacks
 // defined in config files
-var cfStackConfigSchema = {
+const cfStackConfigSchema = {
   properties: {
     name: {
       type: "string",
@@ -48,7 +48,7 @@ var cfStackConfigSchema = {
   required: ["name"]
 };
 
-var envConfigSchema = {
+const envConfigSchema = {
   properties: {
     application: {
       type: "string"
@@ -74,39 +74,34 @@ var envConfigSchema = {
   required: ["account", "environment", "application", "infraBucket", "region"]
 };
 
-function wrap(items, keyName, valueName) {
-  return _(items)
-    .toPairs()
-    .map(([k, v]) => [[keyName, k], [valueName, v]])
-    .map(_.fromPairs)
-    .value()
-}
+const wrap = (obj, wk, wv) => _.toPairs(obj).map((it) => _.zipObject([wk, wv], it))
 
 class CfStack {
   constructor(spec) {
     _.merge(this, spec)
-    this.parameters = wrap(spec.parameters, "ParameterKey", "ParameterValue"),
-    this.tags = wrap(spec.tags, "Key", "Value"),
+    this.parameters = wrap(spec.parameters, "ParameterKey", "ParameterValue");
+    this.tags = wrap(spec.tags, "Key", "Value");
     this.deployName = `${spec.environment}-${spec.application}-${spec.name}`;
   }
 }
 
 // return promise that resolves to true/false or rejects with error
-function bucketExists(cli, bucket) {
-  return cli.headBucket({
+async function bucketExists(cli, bucket) {
+  try {
+    await cli.headBucket({
       Bucket: bucket
-    }).promise()
-    .then(() => Promise.resolve(true))
-    .catch((e) => {
-      switch (e.statusCode) {
-        case 403:
-          return Promise.reject(new Error('403: You don\'t have permissions to access this bucket'));
-        case 404:
-          return Promise.resolve(false);
-        default:
-          throw e;
-      }
-    });
+    }).promise();
+    return true;
+  } catch (e) {
+    switch (e.statusCode) {
+      case 403:
+        return Promise.reject(new Error('403: You don\'t have permissions to access this bucket'));
+      case 404:
+        return Promise.resolve(false);
+      default:
+        throw e;
+    }
+  }
 }
 
 function createBucket(cli, bucket) {
@@ -115,14 +110,15 @@ function createBucket(cli, bucket) {
   }).promise();
 }
 
-function ensureBucket(cli, bucket) {
-  return bucketExists(cli, bucket)
-    .then(d => d ? Promise.resolve() : createBucket(cli, bucket));
+async function ensureBucket(cli, bucket) {
+  if (!await bucketExists(cli, bucket)) {
+    await createBucket(cli, bucket)
+  }
 }
 
 function s3Upload(cli, bucket, src, dest) {
   console.log(`uploading template ${src} to s3://${bucket}/${dest}`);
-  var stream = fs.createReadStream(src);
+  const stream = fs.createReadStream(src);
   return cli.upload({
     Bucket: bucket,
     Key: dest,
@@ -130,51 +126,58 @@ function s3Upload(cli, bucket, src, dest) {
   }).promise();
 }
 
-function awsCfStackExists(cli, stackName) {
-  return cli.describeStacks({
+async function awsCfStackExists(cli, stackName) {
+  try {
+    await cli.describeStacks({
       StackName: stackName
-    })
-    .promise()
-    .then(() => Promise.resolve(true))
-    .catch((e) => {
-      if (e.message.includes('does not exist')) {
-        return Promise.resolve(false);
-      } else {
-        throw e;
-      }
     });
+    return true;
+  } catch (e) {
+    if (e.message.includes('does not exist')) {
+      return false;
+    } else {
+      throw e;
+    }
+  }
 }
 
-function createAwsCfStack(cli, params) {
+async function createAwsCfStack(cli, params) {
   console.log(`creating cloudformation stack ${params.StackName}`);
-  return cli.createStack(params).promise()
-    .then(data =>
-      cli.waitFor('stackCreateComplete', {
-        StackName: data.stackId
-      }).promise())
-    .catch(e => console.log('Error creating stack: ', e));
+
+  try {
+    await cli.createStack(params).promise()
+    await cli.waitFor('stackCreateComplete', {
+      StackName: data.stackId
+    }).promise()
+  } catch (e) {
+    console.log('Error creating stack: ', e)
+  }
 }
 
-function ensureAwsCfStack(cli, params) {
-  return awsCfStackExists(cli, params.StackName)
-    .then(r => (r ? updateAwsCfStack(cli, params) : createAwsCfStack(cli, params)));
+async function ensureAwsCfStack(cli, params) {
+  if (await awsCfStackExists(cli, params.StackName)) {
+    await updateAwsCfStack(cli, params)
+  } else {
+    await createAwsCfStack(cli, params)
+  }
 }
 
-function updateAwsCfStack(cli, params) {
+async function updateAwsCfStack(cli, params) {
   console.log(`updating cloudformation stack ${params.StackName}`);
-  return cli.updateStack(params).promise()
-    .then(data =>
-      cli.waitFor('stackUpdateComplete', {
-        StackName: data.stackId
-      }).promise())
-    .catch(function(e) {
-      switch (e.message) {
-        case 'No updates are to be performed.':
-          return Promise.resolve("No updates are to be performed");
-        default:
-          throw e;
-      }
-    });
+
+  const data = await cli.updateStack(params).promise()
+  try {
+    await cli.waitFor('stackUpdateComplete', {
+      StackName: data.stackId
+    }).promise()
+  } catch (e) {
+    switch (e.message) {
+      case 'No updates are to be performed.':
+        return Promise.resolve("No updates are to be performed");
+      default:
+        throw e;
+    }
+  }
 }
 
 // allows for referencing other variables within the config;
@@ -240,12 +243,12 @@ function defaultNodeCfConfig(application, env) {
 
 module.exports = function(AWS, env, region, envVars, globalVars, stackVars, nodeCfConfig) {
 
-  var envConfig = loadEnvConfig(env, region, globalVars, envVars, envConfigSchema);
-  var stackConfig = loadStackConfig(stackVars, envConfig, cfStackConfigSchema);
+  const envConfig = loadEnvConfig(env, region, globalVars, envVars, envConfigSchema);
+  const stackConfig = loadStackConfig(stackVars, envConfig, cfStackConfigSchema);
   // TODO: add validator for nodeCfConfig:
-  var nodeCfConfig = nodeCfConfig || defaultNodeCfConfig(envConfig.application,
+  nodeCfConfig = nodeCfConfig || defaultNodeCfConfig(envConfig.application,
     envConfig.environment);
-  var stacks = _.map(stackConfig.stacks, v => new CfStack(v));
+  const stacks = _.map(stackConfig.stacks, v => new CfStack(v));
 
   return {
     envConfig: envConfig,
@@ -253,26 +256,26 @@ module.exports = function(AWS, env, region, envVars, globalVars, stackVars, node
     nodeCfConfig: nodeCfConfig,
     stacks: stacks,
 
-    deploy() {
-      var s3Cli = new AWS.S3();
-      var cfCli = new AWS.CloudFormation();
-      var infraBucket = envConfig.infraBucket;
-      var srcDir = nodeCfConfig.localCfTemplateDir;
-      var destDir = nodeCfConfig.s3CfTemplateDir;
-      return ensureBucket(s3Cli, infraBucket)
-        .then(() => Promise.each(stacks, function(stack) {
-          var src = `${srcDir}/${stack.name}.yml`;
-          var timestamp = new Date().getTime();
-          var dest = `${destDir}/${stack.name}-${timestamp}.yml`;
-          return s3Upload(s3Cli, infraBucket, src, dest)
-            .then(data => ensureAwsCfStack(cfCli, {
-              StackName: stack.deployName,
-              Parameters: stack.parameters,
-              Tags: stack.tags,
-              TemplateURL: data.Location
-            }))
-            .then(() => console.log(`deployed ${stack.deployName}!`));
-        }));
+    async deploy() {
+      const s3Cli = new AWS.S3();
+      const cfCli = new AWS.CloudFormation();
+      const infraBucket = envConfig.infraBucket;
+      const srcDir = nodeCfConfig.localCfTemplateDir;
+      const destDir = nodeCfConfig.s3CfTemplateDir;
+      await ensureBucket(s3Cli, infraBucket);
+      await Promise.each(stacks, async(stack) => {
+        const src = `${srcDir}/${stack.name}.yml`;
+        const timestamp = new Date().getTime();
+        const dest = `${destDir}/${stack.name}-${timestamp}.yml`;
+        const data = await s3Upload(s3Cli, infraBucket, src, dest);
+        await ensureAwsCfStack(cfCli, {
+          StackName: stack.deployName,
+          Parameters: stack.parameters,
+          Tags: stack.tags,
+          TemplateURL: data.Location
+        });
+        console.log(`deployed ${stack.deployName}!`);
+      });
     }
   };
 };
