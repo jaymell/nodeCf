@@ -1,10 +1,11 @@
-var assert = require('assert');
-var rewire = require("rewire");
-var nodeCf = rewire('../nodeCf.js');
+const assert = require('assert');
+const rewire = require("rewire");
+const nodeCf = rewire('../nodeCf.js');
 
-var isValidJsonSchema = nodeCf.__get__('isValidJsonSchema');
-var cfStackConfigSchema = nodeCf.__get__('cfStackConfigSchema');
-var envConfigSchema = nodeCf.__get__('envConfigSchema');
+const isValidJsonSchema = nodeCf.__get__('isValidJsonSchema');
+const cfStackConfigSchema = nodeCf.__get__('cfStackConfigSchema');
+const envConfigSchema = nodeCf.__get__('envConfigSchema');
+const CfStack = nodeCf.__get__('CfStack');
 
 describe('cfStackConfigSchema', () => {
   describe('name', () => {
@@ -86,6 +87,37 @@ describe('cfStackConfigSchema', () => {
           }]
         }));
     });
+    it('should wrap parameters with ParameterKey and ParameterValue property names', () => {
+      const spec = {
+        name: "test",
+        parameters: [{
+          "tag1": "test1"
+        }, {
+          "tag2": "test2"
+        }]
+      }
+      const stack = new CfStack(spec)
+      assert.deepEqual(stack.parameters, [
+        {"ParameterKey": "tag1", "ParameterValue": "test1"},
+        {"ParameterKey": "tag2", "ParameterValue": "test2"}
+      ])
+    })
+    it('should wrap tags with Key and Value property names', () => {
+      const spec = {
+        name: "test",
+        parameters: [],
+        tags: [{
+          "tag1": "test1"
+        }, {
+          "tag2": "test2"
+        }]
+      }
+      const stack = new CfStack(spec)
+      assert.deepEqual(stack.tags, [
+        {"Key": "tag1", "Value": "test1"},
+        {"Key": "tag2", "Value": "test2"}
+      ])
+    })
   });
 
 });
@@ -136,3 +168,4 @@ describe('envConfigSchema', () => {
       }));
   });
 });
+

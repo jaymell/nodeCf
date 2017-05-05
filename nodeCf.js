@@ -74,13 +74,13 @@ const envConfigSchema = {
   required: ["account", "environment", "application", "infraBucket", "region"]
 };
 
-const wrap = (obj, wk, wv) => _.toPairs(obj).map((it) => _.zipObject([wk, wv], it))
+const wrap = (wk, wv) => (obj) => _.toPairs(obj).map((it) => _.zipObject([wk, wv], it))
 
 class CfStack {
   constructor(spec) {
     _.merge(this, spec)
-    this.parameters = wrap(spec.parameters, "ParameterKey", "ParameterValue");
-    this.tags = wrap(spec.tags, "Key", "Value");
+    this.parameters = _.flatMap(spec.parameters, wrap("ParameterKey", "ParameterValue"))
+    this.tags = _.flatMap(spec.tags, (wrap("Key", "Value")))
     this.deployName = `${spec.environment}-${spec.application}-${spec.name}`;
   }
 }
