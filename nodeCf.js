@@ -74,29 +74,22 @@ var envConfigSchema = {
   required: ["account", "environment", "application", "infraBucket", "region"]
 };
 
-// primary object for stack objects
-function cfStack(spec) {
-  return {
-    name: spec.name,
-    deployName: `${spec.environment}-${spec.application}-${spec.name}`,
-    environment: spec.environment,
-    application: spec.application,
-    deps: spec.deps,
-    parameters: _.flattenDeep(_.map(spec.parameters, (i) => {
-      return _.map(i, (v, k) => ({
-        ParameterKey: k,
-        ParameterValue: v
-      }));
-    })),
-    tags: _.flattenDeep(_.map(spec.tags, (i) => {
-      return _.map(i, (v, k) => ({
-        Key: k,
-        Value: v
-      }));
-    })),
-    templateURL: spec.templateURL
-  };
-};
+function wrap(items, keyName, valueName) {
+  return _(items)
+    .toPairs()
+    .map(([k, v]) => [[keyName, k], [valueName, v]])
+    .map(_.fromPairs)
+    .value()
+}
+
+class CfStack {
+  constructor(spec) {
+    _.merge(this, spec)
+    this.parameters = wrap(spec.parameters, "ParameterKey", "ParameterValue"),
+    this.tags = wrap(spec.tags, "Key", "Value"),
+    this.deployName = `${spec.environment}-${spec.application}-${spec.name}`;
+  }
+}
 
 // return promise that resolves to true/false or rejects with error
 function bucketExists(cli, bucket) {
@@ -252,7 +245,7 @@ module.exports = function(AWS, env, region, envVars, globalVars, stackVars, node
   // TODO: add validator for nodeCfConfig:
   var nodeCfConfig = nodeCfConfig || defaultNodeCfConfig(envConfig.application,
     envConfig.environment);
-  var stacks = _.map(stackConfig.stacks, v => cfStack(v));
+  var stacks = _.map(stackConfig.stacks, v => new CfStack(v));
 
   return {
     envConfig: envConfig,
