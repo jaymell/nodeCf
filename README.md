@@ -7,7 +7,7 @@ Simple package to help with Cloudformation deployments
 * Promote use of 'native' Cloudformation templates (i.e., with minimal pre-processing)
 
 ### Usage
-node_modules/.bin/nodeCf <Environment Name> [ -r <region> ] [ -p <profile> ]
+node_modules/.bin/nodeCf \<Environment Name\> [ -r \<region\> ] [ -p \<profile\> ]
 
 ### TO DO
 * Print progress of deployments
