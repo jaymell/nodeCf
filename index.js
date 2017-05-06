@@ -7,8 +7,8 @@ var yaml = require('js-yaml');
 var nodeCf = require('./nodeCf.js');
 
 if (process.argv.length <= 2) {
-    console.log("Usage: " + __filename + " <environment name> [ -r <region> ] [ -p <profile>] ");
-    process.exit(-1);
+  console.log("Usage: " + __filename + " <environment name> [ -r <region> ] [ -p <profile>] ");
+  process.exit(-1);
 }
 
 var argv = require('minimist')(process.argv.slice(2));
@@ -19,11 +19,15 @@ var profile = argv['p'];
 
 AWS.config.setPromisesDependency(Promise);
 if (typeof profile !== 'undefined' && profile) {
-  var credentials = new AWS.SharedIniFileCredentials({profile: profile});
-  AWS.config.credentials = credentials;   
+  var credentials = new AWS.SharedIniFileCredentials({
+    profile: profile
+  });
+  AWS.config.credentials = credentials;
 }
 
-AWS.config.update({region: region});
+AWS.config.update({
+  region: region
+});
 
 var envVars = yaml.safeLoad(fs.readFileSync(`./config/${env}.yml`));
 var globalVars = yaml.safeLoad(fs.readFileSync(`./config/global.yml`));
