@@ -2,7 +2,7 @@ const Promise = require('bluebird');
 const nunjucks = require("nunjucks");
 const _ = require('lodash');
 const Ajv = require('ajv');
-const fs = require('fs');
+Promise.promisifyAll(require('fs'));
 
 // schema to validate stacks
 // defined in config files
@@ -241,6 +241,14 @@ function defaultNodeCfConfig(application, env) {
     s3LambdaDir: `${application}/${env}/lambda`
   };
 };
+
+// since we can do either json or yml, look for
+// either:
+function getStackTemplate(templateDir, stackName) {
+  try {
+
+  }
+}
 
 module.exports = function(AWS, env, region, envVars, globalVars, stackVars, nodeCfConfig) {
 
