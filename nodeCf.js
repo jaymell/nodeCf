@@ -131,7 +131,7 @@ async function awsCfStackExists(cli, stackName) {
   try {
     await cli.describeStacks({
       StackName: stackName
-    });
+    }).promise();
     return true;
   } catch (e) {
     if (e.message.includes('does not exist')) {
@@ -146,7 +146,7 @@ async function createAwsCfStack(cli, params) {
   console.log(`creating cloudformation stack ${params.StackName}`);
 
   try {
-    await cli.createStack(params).promise()
+    const data = await cli.createStack(params).promise()
     await cli.waitFor('stackCreateComplete', {
       StackName: data.stackId
     }).promise()
@@ -166,8 +166,8 @@ async function ensureAwsCfStack(cli, params) {
 async function updateAwsCfStack(cli, params) {
   console.log(`updating cloudformation stack ${params.StackName}`);
 
-  const data = await cli.updateStack(params).promise()
   try {
+    const data = await cli.updateStack(params).promise()
     await cli.waitFor('stackUpdateComplete', {
       StackName: data.stackId
     }).promise()
