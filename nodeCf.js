@@ -2,7 +2,8 @@ const Promise = require('bluebird');
 const nunjucks = require("nunjucks");
 const _ = require('lodash');
 const Ajv = require('ajv');
-Promise.promisifyAll(require('fs'));
+const fs = Promise.promisifyAll(require('fs'));
+const path = require("path");
 
 // schema to validate stacks
 // defined in config files
@@ -242,12 +243,23 @@ function defaultNodeCfConfig(application, env) {
   };
 };
 
-// since we can do either json or yml, look for
-// either:
-function getStackTemplate(templateDir, stackName) {
+// return filename if exists, else false
+async function fileExists(f) {
   try {
-
+    await fs.statAsync(f);
+    return f;
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw e;
+    return false;
   }
+}
+
+// look for template having multiple possible file extensions
+async function getTemplateFile(templateDir, stackName) {
+  const f = await Promise.any(_.map(['json', 'yml', 'yaml'], async(ext) =>
+    await fileExists(`${path.join(templateDir, stackName)}.${ext}`)));
+  if (f) return f;
+  else throw new Error('Stack template not found!'); 
 }
 
 module.exports = function(AWS, env, region, envVars, globalVars, stackVars, nodeCfConfig) {
@@ -273,7 +285,7 @@ module.exports = function(AWS, env, region, envVars, globalVars, stackVars, node
       const destDir = nodeCfConfig.s3CfTemplateDir;
       await ensureBucket(s3Cli, infraBucket);
       await Promise.each(stacks, async(stack) => {
-        const src = `${srcDir}/${stack.name}.yml`;
+        const src = await getTemplateFile(srcDir, stack.name);
         const timestamp = new Date().getTime();
         const dest = `${destDir}/${stack.name}-${timestamp}.yml`;
         const data = await s3Upload(s3Cli, infraBucket, src, dest);

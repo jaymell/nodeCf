@@ -16,3 +16,4 @@ node_modules/.bin/nodeCf \<Environment Name\> [ -r \<region\> ] [ -p \<profile\>
 * Delete files from s3 after deployments?
 * Add more unit tests
 * Fix bugs
+* Add example project
