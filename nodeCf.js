@@ -256,7 +256,7 @@ async function fileExists(f) {
 
 // look for template having multiple possible file extensions
 async function getTemplateFile(templateDir, stackName) {
-  const f = await Promise.any(_.map(['json', 'yml', 'yaml'], async(ext) =>
+  const f = await Promise.any(_.map(['yml', 'json', 'yaml'], async(ext) => 
     await fileExists(`${path.join(templateDir, stackName)}.${ext}`)));
   if (f) return f;
   else throw new Error('Stack template not found!'); 
