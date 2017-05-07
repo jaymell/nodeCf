@@ -145,28 +145,24 @@ async function awsCfStackExists(cli, stackName) {
 
 async function createAwsCfStack(cli, params) {
   console.log(`creating cloudformation stack ${params.StackName}`);
-
   try {
     const data = await cli.createStack(params).promise()
     await cli.waitFor('stackCreateComplete', {
       StackName: data.stackId
     }).promise()
-  } catch (e) {
-    console.log('Error creating stack: ', e)
   }
-}
-
-async function ensureAwsCfStack(cli, params) {
-  if (await awsCfStackExists(cli, params.StackName)) {
-    await updateAwsCfStack(cli, params)
-  } else {
-    await createAwsCfStack(cli, params)
+  catch (e) {
+    switch (e.message) {
+      case 'Resource is not in the state stackCreateComplete':
+        throw new Error('stack creation failed');
+      default:
+        throw e;
+    }
   }
 }
 
 async function updateAwsCfStack(cli, params) {
   console.log(`updating cloudformation stack ${params.StackName}`);
-
   try {
     const data = await cli.updateStack(params).promise()
     await cli.waitFor('stackUpdateComplete', {
@@ -175,10 +171,18 @@ async function updateAwsCfStack(cli, params) {
   } catch (e) {
     switch (e.message) {
       case 'No updates are to be performed.':
-        return "No updates are to be performed";
+        return "stack is up-to-date";
       default:
         throw e;
     }
+  }
+}
+
+async function ensureAwsCfStack(cli, params) {
+  if (await awsCfStackExists(cli, params.StackName)) {
+    await updateAwsCfStack(cli, params)
+  } else {
+    await createAwsCfStack(cli, params)
   }
 }
 
@@ -288,14 +292,16 @@ module.exports = function(AWS, env, region, envVars, globalVars, stackVars, node
         const src = await getTemplateFile(srcDir, stack.name);
         const timestamp = new Date().getTime();
         const dest = `${destDir}/${stack.name}-${timestamp}.yml`;
-        const data = await s3Upload(s3Cli, infraBucket, src, dest);
-        await ensureAwsCfStack(cfCli, {
-          StackName: stack.deployName,
-          Parameters: stack.parameters,
-          Tags: stack.tags,
-          TemplateURL: data.Location
-        });
-        console.log(`deployed ${stack.deployName}!`);
+          const data = await s3Upload(s3Cli, infraBucket, src, dest);
+          await ensureAwsCfStack(cfCli, {
+            StackName: stack.deployName,
+            Parameters: stack.parameters,
+            Tags: stack.tags,
+            TemplateURL: data.Location,
+            Capabilities: [ 'CAPABILITY_IAM', 
+              'CAPABILITY_NAMED_IAM' ]
+          });
+          console.log(`deployed ${stack.deployName}`);
       });
     }
   };
