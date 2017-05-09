@@ -148,7 +148,7 @@ async function createAwsCfStack(cli, params) {
   try {
     const data = await cli.createStack(params).promise()
     await cli.waitFor('stackCreateComplete', {
-      StackName: data.stackId
+      StackName: params.StackName
     }).promise()
   }
   catch (e) {
@@ -166,7 +166,7 @@ async function updateAwsCfStack(cli, params) {
   try {
     const data = await cli.updateStack(params).promise()
     await cli.waitFor('stackUpdateComplete', {
-      StackName: data.stackId
+      StackName: params.StackName
     }).promise()
   } catch (e) {
     switch (e.message) {
