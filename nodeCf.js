@@ -230,7 +230,6 @@ function loadStackConfig(stackVars, envVars, schema) {
 
   // validate and add config-specific properties:
   _.forEach(myVars.stacks, function(v, k) {
-    v.name = k;
     if (!isValidJsonSchema(schema, v)) throw new Error('Stack does not match schema!');
     v.application = envVars.application;
     v.environment = envVars.environment;
