@@ -186,6 +186,18 @@ async function ensureAwsCfStack(cli, params) {
   }
 }
 
+async function deleteAwsCfStack(cli, params) {
+  console.log(`deleting cloudformation stack ${params.StackName}`);
+  try {
+    const data = await cli.deleteStack(params).promise();
+    await cli.waitFor('stackDeleteComplete', {
+      StackName: params.StackName
+    }).promise();
+  } catch (e) {
+    throw e;
+  }
+}
+
 // allows for referencing other variables within the config;
 // recurse until there aren't any more values to be de-templatized:
 function parseConfig(myVars, templateVars) {
@@ -279,6 +291,17 @@ module.exports = function(AWS, env, region, envVars, globalVars, stackVars, node
     stackConfig: stackConfig,
     nodeCfConfig: nodeCfConfig,
     stacks: stacks,
+
+    async delete() {
+      const cfCli = new AWS.CloudFormation();
+      // reverse array prior to deletion:
+      await Promise.each(stacks.reverse(), async(stack) => {
+        await deleteAwsCfStack(cfCli, {
+          StackName: stack.deployName
+        });
+        console.log(`deleted ${stack.deployName}`);
+      })
+    },
 
     async deploy() {
       const s3Cli = new AWS.S3();

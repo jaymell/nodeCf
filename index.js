@@ -13,10 +13,10 @@ if (process.argv.length <= 2) {
 
 async function main() {
   var argv = require('minimist')(process.argv.slice(2));
-
   var env = argv['_'][0];
   var region = argv['r'] || 'us-east-1';
   var profile = argv['p'];
+  var deleteStacks = argv['delete'];
 
   AWS.config.setPromisesDependency(Promise);
   if (typeof profile !== 'undefined' && profile) {
@@ -36,7 +36,12 @@ async function main() {
 
   try {
     const cfStacks = nodeCf(AWS, env, region, envVars, globalVars, stackVars);
-    await cfStacks.deploy();
+    if (deleteStacks === true) {
+      await cfStacks.delete();
+    }
+    else {
+      await cfStacks.deploy();      
+    } 
   } catch (e) {
     console.log(`Deployment Failed: ${e.message}`)
     process.exit(1)
