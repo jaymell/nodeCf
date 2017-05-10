@@ -4,6 +4,8 @@ const _ = require('lodash');
 const Ajv = require('ajv');
 const fs = Promise.promisifyAll(require('fs'));
 const path = require("path");
+var AWS = require('aws-sdk');;
+AWS.config.setPromisesDependency(Promise);
 
 // schema to validate stacks
 // defined in config files
@@ -88,7 +90,8 @@ class CfStack {
 }
 
 // return promise that resolves to true/false or rejects with error
-async function bucketExists(cli, bucket) {
+async function bucketExists(bucket) {
+  const cli = new AWS.S3();
   try {
     await cli.headBucket({
       Bucket: bucket
@@ -106,19 +109,21 @@ async function bucketExists(cli, bucket) {
   }
 }
 
-function createBucket(cli, bucket) {
+function createBucket(bucket) {
+  const cli = new AWS.S3();
   return cli.createBucket({
     Bucket: bucket
   }).promise();
 }
 
-async function ensureBucket(cli, bucket) {
-  if (!await bucketExists(cli, bucket)) {
-    await createBucket(cli, bucket)
+async function ensureBucket(bucket) {
+  if (!await bucketExists(bucket)) {
+    await createBucket(bucket)
   }
 }
 
-function s3Upload(cli, bucket, src, dest) {
+function s3Upload(bucket, src, dest) {
+  const cli = new AWS.S3();
   console.log(`uploading template ${src} to s3://${bucket}/${dest}`);
   const stream = fs.createReadStream(src);
   return cli.upload({
@@ -128,7 +133,8 @@ function s3Upload(cli, bucket, src, dest) {
   }).promise();
 }
 
-async function awsCfStackExists(cli, stackName) {
+async function awsCfStackExists(stackName) {
+  const cli = new AWS.CloudFormation();
   try {
     await cli.describeStacks({
       StackName: stackName
@@ -143,7 +149,8 @@ async function awsCfStackExists(cli, stackName) {
   }
 }
 
-async function createAwsCfStack(cli, params) {
+async function createAwsCfStack(params) {
+  const cli = new AWS.CloudFormation();
   console.log(`creating cloudformation stack ${params.StackName}`);
   try {
     const data = await cli.createStack(params).promise()
@@ -161,7 +168,8 @@ async function createAwsCfStack(cli, params) {
   }
 }
 
-async function updateAwsCfStack(cli, params) {
+async function updateAwsCfStack(params) {
+  const cli = new AWS.CloudFormation();
   console.log(`updating cloudformation stack ${params.StackName}`);
   try {
     const data = await cli.updateStack(params).promise()
@@ -178,21 +186,31 @@ async function updateAwsCfStack(cli, params) {
   }
 }
 
-async function ensureAwsCfStack(cli, params) {
-  if (await awsCfStackExists(cli, params.StackName)) {
-    await updateAwsCfStack(cli, params)
+async function ensureAwsCfStack(params) {
+  if (await awsCfStackExists(params.StackName)) {
+    await updateAwsCfStack(params)
   } else {
-    await createAwsCfStack(cli, params)
+    await createAwsCfStack(params)
   }
 }
 
-async function deleteAwsCfStack(cli, params) {
+async function deleteAwsCfStack(params) {
+  const cli = new AWS.CloudFormation();
   console.log(`deleting cloudformation stack ${params.StackName}`);
   try {
     const data = await cli.deleteStack(params).promise();
     await cli.waitFor('stackDeleteComplete', {
       StackName: params.StackName
     }).promise();
+  } catch (e) {
+    throw e;
+  }
+}
+
+async function validateAwsCfStack(params) {
+  const cli = new AWS.CloudFormation();
+  try {
+    const data = await cli.validateTemplate(params).promise();
   } catch (e) {
     throw e;
   }
@@ -277,7 +295,35 @@ async function getTemplateFile(templateDir, stackName) {
   else throw new Error('Stack template not found!'); 
 }
 
-module.exports = function(AWS, env, region, envVars, globalVars, stackVars, nodeCfConfig) {
+function configAws(params) {
+
+  if (typeof params.profile !== 'undefined' && params.profile) {
+    var credentials = new AWS.SharedIniFileCredentials({
+      profile: params.profile
+    });
+    AWS.config.credentials = credentials;
+  }
+
+  AWS.config.update({
+    region: params.region
+  });
+
+}
+
+module.exports = function(params) {
+
+  const env = params.env;
+  const region = params.region;
+  const profile = params.profile;
+  var envVars = params.envVars;
+  var globalVars = params.globalVars;
+  var stackVars = params.stackVars;
+  var nodeCfConfig = params.nodeCfConfig;
+
+  configAws({
+    profile: profile,
+    region: region
+  });
 
   const envConfig = loadEnvConfig(env, region, globalVars, envVars, envConfigSchema);
   const stackConfig = loadStackConfig(stackVars, envConfig, cfStackConfigSchema);
@@ -292,11 +338,28 @@ module.exports = function(AWS, env, region, envVars, globalVars, stackVars, node
     nodeCfConfig: nodeCfConfig,
     stacks: stacks,
 
+    async validate() {
+      const infraBucket = envConfig.infraBucket;
+      const srcDir = nodeCfConfig.localCfTemplateDir;
+      const destDir = nodeCfConfig.s3CfTemplateDir;
+      await ensureBucket(infraBucket);
+      await Promise.each(stacks, async(stack) => {
+        const src = await getTemplateFile(srcDir, stack.name);
+        const timestamp = new Date().getTime();
+        const dest = `${destDir}/${stack.name}-${timestamp}.yml`;
+        const data = await s3Upload(infraBucket, src, dest);
+        console.log(`validating cloudformation stack ${src}`);
+        await validateAwsCfStack({
+          TemplateURL: data.Location,
+        });
+        console.log(`${src} is a valid Cloudformation template`);
+      });
+    },
+
     async delete() {
-      const cfCli = new AWS.CloudFormation();
       // reverse array prior to deletion:
       await Promise.each(stacks.reverse(), async(stack) => {
-        await deleteAwsCfStack(cfCli, {
+        await deleteAwsCfStack({
           StackName: stack.deployName
         });
         console.log(`deleted ${stack.deployName}`);
@@ -304,28 +367,25 @@ module.exports = function(AWS, env, region, envVars, globalVars, stackVars, node
     },
 
     async deploy() {
-      const s3Cli = new AWS.S3();
-      const cfCli = new AWS.CloudFormation();
       const infraBucket = envConfig.infraBucket;
       const srcDir = nodeCfConfig.localCfTemplateDir;
       const destDir = nodeCfConfig.s3CfTemplateDir;
-      await ensureBucket(s3Cli, infraBucket);
+      await ensureBucket(infraBucket);
       await Promise.each(stacks, async(stack) => {
         const src = await getTemplateFile(srcDir, stack.name);
         const timestamp = new Date().getTime();
         const dest = `${destDir}/${stack.name}-${timestamp}.yml`;
-          const data = await s3Upload(s3Cli, infraBucket, src, dest);
-          await ensureAwsCfStack(cfCli, {
-            StackName: stack.deployName,
-            Parameters: stack.parameters,
-            Tags: stack.tags,
-            TemplateURL: data.Location,
-            Capabilities: [ 'CAPABILITY_IAM', 
-              'CAPABILITY_NAMED_IAM' ]
-          });
-          console.log(`deployed ${stack.deployName}`);
+        const data = await s3Upload(infraBucket, src, dest);
+        await ensureAwsCfStack({
+          StackName: stack.deployName,
+          Parameters: stack.parameters,
+          Tags: stack.tags,
+          TemplateURL: data.Location,
+          Capabilities: [ 'CAPABILITY_IAM', 
+            'CAPABILITY_NAMED_IAM' ]
+        });
+        console.log(`deployed ${stack.deployName}`);
       });
     }
   };
 };
-
