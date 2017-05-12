@@ -5,9 +5,10 @@ const Promise = require('bluebird');
 const fs = require('fs');
 const yaml = require('js-yaml'); 
 const nodeCf = require('./nodeCf.js');
+const _ = require('lodash');
 
 function usage() {
-  const usageStr = `Usage: " + __filename + " <environment name> <action (deploy, delete, or validate)> [ -r <region> ] [ -p <profile>]`
+  const usageStr = `Usage: " + __filename + " <environment name> <action (deploy, delete, or validate)> [ -r <region> ] [ -p <profile> ] [ -s,--stacks <stack name>]`
   console.log(usageStr);
   process.exit(-1);
 }
@@ -22,11 +23,14 @@ function parseArgs(argv) {
     action = argv['_'][1];
   }
 
+  var getStacks = stacks => ( _.isString(stacks) ? _.map(stacks.split(','), stack => stack.trim()) : undefined )
+
   return {
     env: argv['_'][0],
     action: action,
     region: argv['r'] || 'us-east-1',
     profile: argv['p'],
+    stacks: getStacks(argv['s'] || argv['stacks'])
   }
 }
 

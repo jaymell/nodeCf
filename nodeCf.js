@@ -180,6 +180,8 @@ async function updateAwsCfStack(params) {
     switch (e.message) {
       case 'No updates are to be performed.':
         return "stack is up-to-date";
+      case 'Resource is not in the state stackUpdateComplete':
+        throw new Error('stack update failed');
       default:
         throw e;
     }
