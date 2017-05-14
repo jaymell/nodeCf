@@ -261,7 +261,7 @@ function loadStackConfig(stackVars, envVars, schema) {
   var myVars = parseConfig(stackVars, envVars);
 
   // validate and add config-specific properties:
-  _.forEach(myVars.stacks, function(v, k) {
+  _.forEach(myVars, function(v, k) {
     if (!isValidJsonSchema(schema, v)) throw new Error('Stack does not match schema!');
     v.application = envVars.application;
     v.environment = envVars.environment;
@@ -332,7 +332,7 @@ module.exports = function(params) {
   // TODO: add validator for nodeCfConfig:
   nodeCfConfig = nodeCfConfig || defaultNodeCfConfig(envConfig.application,
     envConfig.environment);
-  const stacks = _.map(stackConfig.stacks, v => new CfStack(v));
+  const stacks = _.map(stackConfig, v => new CfStack(v));
 
   return {
     envConfig: envConfig,
