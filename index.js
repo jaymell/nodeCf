@@ -6,6 +6,9 @@ const fs = require('fs');
 const yaml = require('js-yaml'); 
 const nodeCf = require('./nodeCf.js');
 const _ = require('lodash');
+const cli = require('./cli.js');
+
+const DEFAULT_REGION = 'us-east-1';
 
 function usage() {
   const usageStr = `Usage: " + __filename + " <environment name> <action (deploy, delete, or validate)> [ -r <region> ] [ -p <profile> ] [ -s,--stacks <stack name>]`
@@ -13,59 +16,27 @@ function usage() {
   process.exit(-1);
 }
 
-function parseArgs(argv) {
-  if (process.argv.length <= 2) usage();
-  if ( argv['_'].length < 1 ) usage();
-  
-  // default action
-  var action = 'deploy';
-  if ( argv['_'].length >= 2 ) {
-    action = argv['_'][1];
-  }
-
-  // fail out if empty '-s' or '--stacks' passed:
-  if ('s' in argv || 'stacks' in argv) {
-    let stacks = argv['s'] || argv['stacks'];
-    if (typeof stacks !== 'string') {
-      console.log('No stack name passed');
-      process.exit(1);      
-    }
-  } 
-
-  var getStackNames = stacks => ( _.isString(stacks) ? _.map(stacks.split(','), stack => stack.trim()) : undefined )
-
-  return {
-    env: argv['_'][0],
-    action: action,
-    region: argv['r'] || 'us-east-1',
-    profile: argv['p'],
-    stackFilters: getStackNames(argv['s'] || argv['stacks']) || undefined
-  }
-}
-
-function filterStacks(stacks, stackFilters) {
-  if ( stackFilters instanceof Array === false || stackFilters.length === 0) {
-    return stacks.stacks;
-  }
-  return _.filter(stacks.stacks, stack => stackFilters.includes(stack.name))
-}
-
 async function main() {
 
-  const config = parseArgs(require('minimist')(process.argv.slice(2)));
-  const envVars = yaml.safeLoad(fs.readFileSync(`./config/${config.env}.yml`));
-  const globalVars = yaml.safeLoad(fs.readFileSync(`./config/global.yml`));
-  const stacks = filterStacks(yaml.safeLoad(fs.readFileSync(`./config/stacks.yml`)),
-                              config.stackFilters);
+  try {
+    var config = cli.parseArgs(require('minimist')(process.argv.slice(2)));
+    var envVars = yaml.safeLoad(fs.readFileSync(`./config/${config.env}.yml`));
+    var globalVars = yaml.safeLoad(fs.readFileSync(`./config/global.yml`));
+    var stacks = cli.filterStacks(yaml.safeLoad(fs.readFileSync(`./config/stacks.yml`)),
+                                config.stackFilters);
+  } catch (e) {
+    console.log(e);
+    process.exit(1);
+  }
 
   if (stacks.length == 0) {
     console.log('invalid stack argument');
     process.exit(1);
   }
-  console.log('these stacks: ', stacks);
+
   const cfStacks = nodeCf({
     env: config.env, 
-    region: config.region,
+    region: config.region || DEFAULT_REGION,
     profile: config.profile,
     envVars: envVars,
     globalVars: globalVars,
