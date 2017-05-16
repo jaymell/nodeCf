@@ -188,12 +188,18 @@ async function updateAwsCfStack(params) {
   }
 }
 
+// update / create and return its info:
+
 async function ensureAwsCfStack(params) {
+  const cli = new AWS.CloudFormation();
   if (await awsCfStackExists(params.StackName)) {
     await updateAwsCfStack(params)
   } else {
     await createAwsCfStack(params)
   }
+  return await cli.describeStacks({
+    StackName: params.StackName
+  }).promise()
 }
 
 async function deleteAwsCfStack(params) {
@@ -333,6 +339,9 @@ module.exports = function(params) {
   nodeCfConfig = nodeCfConfig || defaultNodeCfConfig(envConfig.application,
     envConfig.environment);
   const stacks = _.map(stackConfig, v => new CfStack(v));
+  const infraBucket = envConfig.infraBucket;
+  const srcDir = nodeCfConfig.localCfTemplateDir;
+  const destDir = nodeCfConfig.s3CfTemplateDir;
 
   return {
     envConfig: envConfig,
@@ -341,18 +350,15 @@ module.exports = function(params) {
     stacks: stacks,
 
     async validate() {
-      const infraBucket = envConfig.infraBucket;
-      const srcDir = nodeCfConfig.localCfTemplateDir;
-      const destDir = nodeCfConfig.s3CfTemplateDir;
       await ensureBucket(infraBucket);
       await Promise.each(stacks, async(stack) => {
         const src = await getTemplateFile(srcDir, stack.name);
         const timestamp = new Date().getTime();
         const dest = `${destDir}/${stack.name}-${timestamp}.yml`;
-        const data = await s3Upload(infraBucket, src, dest);
+        const s3Resp = await s3Upload(infraBucket, src, dest);
         console.log(`validating cloudformation stack ${src}`);
         await validateAwsCfStack({
-          TemplateURL: data.Location,
+          TemplateURL: s3Resp.Location,
         });
         console.log(`${src} is a valid Cloudformation template`);
       });
@@ -369,23 +375,22 @@ module.exports = function(params) {
     },
 
     async deploy() {
-      const infraBucket = envConfig.infraBucket;
-      const srcDir = nodeCfConfig.localCfTemplateDir;
-      const destDir = nodeCfConfig.s3CfTemplateDir;
       await ensureBucket(infraBucket);
       await Promise.each(stacks, async(stack) => {
         const src = await getTemplateFile(srcDir, stack.name);
         const timestamp = new Date().getTime();
         const dest = `${destDir}/${stack.name}-${timestamp}.yml`;
-        const data = await s3Upload(infraBucket, src, dest);
-        await ensureAwsCfStack({
+        const s3Resp = await s3Upload(infraBucket, src, dest);
+        const stackResp = await ensureAwsCfStack({
           StackName: stack.deployName,
           Parameters: stack.parameters,
           Tags: stack.tags,
-          TemplateURL: data.Location,
+          TemplateURL: s3Resp.Location,
           Capabilities: [ 'CAPABILITY_IAM', 
             'CAPABILITY_NAMED_IAM' ]
         });
+        stack.parameters = 
+        stack.outputs = 
         console.log(`deployed ${stack.deployName}`);
       });
     }
