@@ -1,12 +1,42 @@
 const _ = require('lodash');
+const yaml = require('js-yaml'); 
 
 // contains helper functions for index.s
 
+function loadNodeCfConfig(args) {
+
+  var nodeCfConfig = {};
+
+  if ( typeof args.nodeCfConfig !== 'undefined') {
+    try {
+      nodeCfConfig = yaml.safeLoad(fs.readFileSync(args.nodeCfConfig));
+    } catch (e) {
+      console.log(`Unable to load nodeCf config file: ${e.message}`)
+      process.exit(1);
+    }
+  }
+
+  const localCfTemplateDir = nodeCfConfig.localCfTemplateDir || `./templates`;
+  const localConfigDir =  nodeCfConfig.localConfigDir || `./config`;
+  const globalConfig = nodeCfConfig.globalConfig || `${localConfigDir}/global.yml`;
+  const s3CfTemplateDir = nodeCfConfig.s3CfTemplateDir || `/${args.env}/templates`;
+  const s3LambdaDir = nodeCfConfig.s3LambdaDir || `/${args.env}/lambda`;
+
+  return {
+    localCfTemplateDir: localCfTemplateDir,
+    localConfigDir: localConfigDir,
+    globalConfig: globalConfig,
+    s3CfTemplateDir: s3CfTemplateDir,
+    s3LambdaDir: s3LambdaDir
+  }
+}
+
+// at a minimum, environment name must be passed via CLI:
 function parseArgs(argv) {
   if (process.argv.length <= 2)
     throw new Error('invalid arguments passed');
   if ( argv['_'].length < 1 ) 
-      throw new Error('invalid arguments passed');
+    throw new Error('invalid arguments passed');
   
   // default action
   var action = 'deploy';
@@ -32,6 +62,7 @@ function parseArgs(argv) {
     action: action,
     region: argv['r'],
     profile: argv['p'],
+    nodeCfConfig: argv['c'] || argv['config'],
     stackFilters: getStackNames(argv['s'] || argv['stacks']) || undefined
   }
 }

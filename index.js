@@ -11,16 +11,21 @@ const cli = require('./cli.js');
 const DEFAULT_REGION = 'us-east-1';
 
 function usage() {
-  const usageStr = `\n\tUsage: node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] [ -s,--stacks <STACK NAMES> ]
-`
+  const usageStr = `\n\tUsage: node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] [ -s,--stacks <STACK NAMES> ]`
   console.log(usageStr);
   process.exit(-1);
 }
 
 async function main() {
 
+  var args = cli.parseArgs(require('minimist')(process.argv.slice(2)));
+  var nodeCfConfig = loadNodeCfConfig(args);
+
   try {
-    var config = cli.parseArgs(require('minimist')(process.argv.slice(2)));
+
+  }
+  try {
+
   }
   catch (e) {
     console.log(e.message);
