@@ -3,8 +3,10 @@ const _ = require('lodash');
 // contains helper functions for index.s
 
 function parseArgs(argv) {
-  if (process.argv.length <= 2) usage();
-  if ( argv['_'].length < 1 ) usage();
+  if (process.argv.length <= 2)
+    throw new Error('invalid arguments passed');
+  if ( argv['_'].length < 1 ) 
+      throw new Error('invalid arguments passed');
   
   // default action
   var action = 'deploy';
