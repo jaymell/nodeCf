@@ -1,81 +1,9 @@
 const Promise = require('bluebird');
-const nunjucks = require("nunjucks");
 const _ = require('lodash');
-const Ajv = require('ajv');
 const fs = Promise.promisifyAll(require('fs'));
 const path = require("path");
 var AWS = require('aws-sdk');;
 AWS.config.setPromisesDependency(Promise);
-
-// schema to validate stacks
-// defined in config files
-const cfStackConfigSchema = {
-  properties: {
-    name: {
-      type: "string",
-      pattern: "^[a-zA-Z0-9\-]+$"
-    },
-    tags: {
-      type: "array",
-      items: {
-        type: "object",
-        patternProperties: {
-          "^[a-zA-Z0-9]+$": {
-            type: "string"
-          }
-        },
-        additionalProperties: false
-      },
-      additionalItems: false
-    },
-    parameters: {
-      type: "array",
-      items: {
-        type: "object",
-        patternProperties: {
-          "^[a-zA-Z0-9]+$": {
-            type: "string"
-          }
-        },
-        additionalProperties: false
-      },
-      additionalItems: false
-    },
-    deps: {
-      type: "array",
-      items: {
-        type: "string"
-      }
-    }
-  },
-  required: ["name"]
-};
-
-const envConfigSchema = {
-  properties: {
-    application: {
-      type: "string"
-    },
-    account: {
-      anyOf: [{
-        type: "string",
-        pattern: "^[0-9]+$"
-      }, {
-        type: "integer"
-      }]
-    },
-    environment: {
-      type: "string"
-    },
-    infraBucket: {
-      type: "string"
-    },
-    region: {
-      type: "string"
-    },
-  },
-  required: ["account", "environment", "application", "infraBucket", "region"]
-};
 
 const wrap = _.curry((wk, wv, obj) => _.toPairs(obj).map((it) => _.zipObject([wk, wv], it)))
 const wrapWith = _.curry((k, v, items) => _.flatMap(items, wrap(k, v)))
@@ -224,65 +152,7 @@ async function validateAwsCfStack(params) {
   }
 }
 
-// allows for referencing other variables within the config;
-// recurse until there aren't any more values to be de-templatized:
-function parseConfig(myVars, templateVars) {
-  var myVars = JSON.parse(nunjucks.renderString(JSON.stringify(myVars), templateVars));
-  _.forOwn(myVars, function(v, k) {
-    if (typeof v === "string" && v.includes('{{') && v.includes('}}'))
-      myVars = parseConfig(myVars, templateVars);
-  });
-  return myVars;
-}
 
-// pass var objects; variables will be
-// env-specific will overwrite any conflicting
-// global vars
-function loadEnvConfig(env, region, globalVars, envVars, schema) {
-  // FIXME: `env` and `region` are handled a bit sloppy, but this
-  // is current way to insert them into config, given that they are
-  // supplied at runtime:
-  var myVars = _.extend(globalVars, envVars, {
-    environment: env,
-    region: region
-  });
-  myVars = parseConfig(myVars, JSON.parse(JSON.stringify(myVars)));
-
-  if (!(isValidJsonSchema(schema, myVars))) {
-    throw new Error('Invalid environment configuration!');
-  }
-  return myVars;
-}
-
-function isValidJsonSchema(schema, spec) {
-  var ajv = new Ajv({
-    useDefaults: true
-  });
-  var valid = ajv.compile(schema);
-  if (!(valid(spec))) return false;
-  return true;
-}
-
-function loadStackConfig(stackVars, envVars, schema) {
-  var myVars = parseConfig(stackVars, envVars);
-
-  // validate and add config-specific properties:
-  _.forEach(myVars, function(v, k) {
-    if (!isValidJsonSchema(schema, v)) throw new Error('Stack does not match schema!');
-    v.application = envVars.application;
-    v.environment = envVars.environment;
-    v.account = envVars.account;
-  });
-  return myVars;
-}
-
-function defaultNodeCfConfig(application, env) {
-  return {
-    localCfTemplateDir: `./templates`,
-    s3CfTemplateDir: `${application}/${env}/templates`,
-    s3LambdaDir: `${application}/${env}/lambda`
-  };
-};
 
 // return filename if exists, else false
 async function fileExists(f) {
