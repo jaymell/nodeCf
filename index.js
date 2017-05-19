@@ -6,8 +6,9 @@ const fs = require('fs');
 const yaml = require('js-yaml'); 
 const nodeCf = require('./nodeCf.js');
 const _ = require('lodash');
-const cli = require('./cli.js');
+const config = require('./config.js');
 const path = require('path');
+const schema = require('./schema.js');
 
 function usage() {
   const usageStr = `\n\tUsage: node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] [ -s,--stacks <STACK NAMES> ]`
@@ -17,10 +18,11 @@ function usage() {
 
 async function main() {
 
-  var args, nodeCfCfg 
+  var args, nodeCfCfg, globalVars, envVars, stacks;
 
   try {
-    args = cli.parseArgs(require('minimist')(process.argv.slice(2)));
+    args = config.parseArgs(require('minimist')(process.argv.slice(2), {default: {region: 'us-east-1'}})
+    );
   } catch (e) {
     console.log(e.message);
     usage();
@@ -36,7 +38,7 @@ async function main() {
 
   // FIXME: global should probably just be optional
   try {
-    var globalVars = yaml.safeLoad(
+    globalVars = yaml.safeLoad(
       fs.readFileSync(
         nodeCfCfg.globalCfg
     ));  
@@ -46,21 +48,35 @@ async function main() {
   }
 
   try {
-    var envVars = yaml.safeLoad(
+    envVars = yaml.safeLoad(
       fs.readFileSync(
         path.join(
           nodeCfCfg.localCfgDir, 
          `${config.env}.yml`
     )));
+
   } catch (e) {
     console.log(`Failed to load environment config: ${e.message}`);
     process.exit(1);
   }
 
+
+  try {
+    // concatenate variables, with env-specific overriding global,
+    // then render and validate:
+    envVars = loadEnvConfig(_.assign(globalVars, 
+      envVars, 
+      { environment: args.env,
+        region: args.region
+    }), schema.envConfigSchema);
+  } catch (e) {
+
+  }
+
   try {
     // only run stacks that were passed on command line
     // (if none passed, all will be run):
-    var stacks = cli.filterStacks(
+    stacks = config.filterStacks(
       yaml.safeLoad(
         fs.readFileSync(
           nodeCfCfg.stackCfg)
@@ -72,21 +88,15 @@ async function main() {
     process.exit(1);  
   }
 
+  // if no stacks exist or no stacks match filter:
   if (stacks.length == 0) {
     console.log('invalid stack argument');
     process.exit(1);
   }
 
-  const cfStacks = nodeCf({
-    env: config.env, 
-    region: config.region || DEFAULT_REGION,
-    profile: config.profile,
-    envVars: envVars,
-    globalVars: globalVars,
-    stackVars: stacks
-  });
+  const deployment = nodeCf(args.region, args.profile);
 
-  switch (config.action) {
+  switch (args.action) {
     case 'deploy':
       try {
         await cfStacks.deploy();

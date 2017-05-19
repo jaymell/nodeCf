@@ -4,75 +4,7 @@ const nunjucks = require("nunjucks");
 const Ajv = require('ajv');
 
 
-// schema to validate stacks
-// defined in config files
-const cfStackConfigSchema = {
-  properties: {
-    name: {
-      type: "string",
-      pattern: "^[a-zA-Z0-9\-]+$"
-    },
-    tags: {
-      type: "array",
-      items: {
-        type: "object",
-        patternProperties: {
-          "^[a-zA-Z0-9]+$": {
-            type: "string"
-          }
-        },
-        additionalProperties: false
-      },
-      additionalItems: false
-    },
-    parameters: {
-      type: "array",
-      items: {
-        type: "object",
-        patternProperties: {
-          "^[a-zA-Z0-9]+$": {
-            type: "string"
-          }
-        },
-        additionalProperties: false
-      },
-      additionalItems: false
-    },
-    deps: {
-      type: "array",
-      items: {
-        type: "string"
-      }
-    }
-  },
-  required: ["name"]
-};
 
-const envConfigSchema = {
-  properties: {
-    application: {
-      type: "string"
-    },
-    account: {
-      anyOf: [{
-        type: "string",
-        pattern: "^[0-9]+$"
-      }, {
-        type: "integer"
-      }]
-    },
-    environment: {
-      type: "string"
-    },
-    infraBucket: {
-      type: "string"
-    },
-    region: {
-      type: "string"
-    },
-  },
-  required: ["account", "environment", "application", "infraBucket", "region"]
-};
 
 function loadNodeCfConfig(args) {
 
@@ -95,19 +27,17 @@ function loadNodeCfConfig(args) {
   const stackCfg = cfg.stackCfg || `${localConfigDir}/stacks.yml`;
   const s3CfTemplateDir = cfg.s3CfTemplateDir || `/${args.env}/templates`;
   const s3LambdaDir = cfg.s3LambdaDir || `/${args.env}/lambda`;
-  const defaultRegion = cfg.defaultRegion || 'us-east-1';
 
   return {
     localCfTemplateDir: localCfTemplateDir,
     localCfgDir: localCfgDir,
     globalConfig: globalConfig,
     s3CfTemplateDir: s3CfTemplateDir,
-    s3LambdaDir: s3LambdaDir,
-    defaultRegion: defaultRegion
+    s3LambdaDir: s3LambdaDir
   }
 }
 
-// at a minimum, environment name must be passed via CLI:
+// validate command line arguments
 function parseArgs(argv) {
   if (process.argv.length <= 2)
     throw new Error('invalid arguments passed');
@@ -124,8 +54,7 @@ function parseArgs(argv) {
   if ('s' in argv || 'stacks' in argv) {
     let stacks = argv['s'] || argv['stacks'];
     if (typeof stacks !== 'string') {
-      console.log('No stack name passed');
-      process.exit(1);      
+      throw new Error('No stack name passed');
     }
   } 
 
@@ -136,7 +65,7 @@ function parseArgs(argv) {
   return {
     env: argv['_'][0],
     action: action,
-    region: argv['r'],
+    region: argv['r'] || argv['region'],
     profile: argv['p'],
     cfg: argv['c'] || argv['config'],
     stackFilters: getStackNames(argv['s'] || argv['stacks']) || undefined
@@ -159,8 +88,13 @@ function filterStacks(stacks, stackFilters) {
 }
 
 // allows for referencing other variables within the config;
-// recurse until there aren't any more values to be de-templatized:
+// recurse until there aren't any more values to be rendered:
 function renderConfig(myVars, templateVars) {
+  if (typeof templateVars === 'undefined') {
+    // use variables as inputs
+    // for their own rendering
+    templateVars = JSON.parse(JSON.stringify(myVars));
+  }
   var myVars = JSON.parse(nunjucks.renderString(JSON.stringify(myVars), templateVars));
   _.forOwn(myVars, function(v, k) {
     if (typeof v === "string" && v.includes('{{') && v.includes('}}'))
@@ -169,23 +103,13 @@ function renderConfig(myVars, templateVars) {
   return myVars;
 }
 
-// pass var objects; variables will be
-// env-specific will overwrite any conflicting
-// global vars
-function loadEnvConfig(env, region, globalVars, envVars, schema) {
-  // FIXME: `env` and `region` are handled a bit sloppy, but this
-  // is current way to insert them into config, given that they are
-  // supplied at runtime:
-  var myVars = _.extend(globalVars, envVars, {
-    environment: env,
-    region: region
-  });
-  myVars = parseConfig(myVars, JSON.parse(JSON.stringify(myVars)));
-
-  if (!(isValidJsonSchema(schema, myVars))) {
+// render and validate config
+function loadEnvConfig(envVars, schema) {
+  envVars = parseConfig(envVars);
+  if (!(isValidJsonSchema(schema, envVars))) {
     throw new Error('Invalid environment configuration!');
   }
-  return myVars;
+  return envVars;
 }
 
 function isValidJsonSchema(schema, spec) {

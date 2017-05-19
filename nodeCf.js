@@ -188,7 +188,7 @@ function configAws(params) {
 
 }
 
-module.exports = function(params) {
+module.exports = function(region, profile) {
 
   const env = params.env;
   const region = params.region;
@@ -203,11 +203,7 @@ module.exports = function(params) {
     region: region
   });
 
-  const envConfig = loadEnvConfig(env, region, globalVars, envVars, envConfigSchema);
   const stackConfig = loadStackConfig(stackVars, envConfig, cfStackConfigSchema);
-  // TODO: add validator for nodeCfConfig:
-  nodeCfConfig = nodeCfConfig || defaultNodeCfConfig(envConfig.application,
-    envConfig.environment);
   const stacks = _.map(stackConfig, v => new CfStack(v));
   const infraBucket = envConfig.infraBucket;
   const srcDir = nodeCfConfig.localCfTemplateDir;
