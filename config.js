@@ -3,9 +3,6 @@ const yaml = require('js-yaml');
 const nunjucks = require("nunjucks");
 const Ajv = require('ajv');
 
-
-
-
 function loadNodeCfConfig(args) {
 
   var cfg;
@@ -23,15 +20,16 @@ function loadNodeCfConfig(args) {
 
   const localCfTemplateDir = cfg.localCfTemplateDir || `./templates`;
   const localCfgDir =  cfg.localCfgDir || `./config`;
-  const globalCfg = cfg.globalCfg || `${localConfigDir}/global.yml`;
-  const stackCfg = cfg.stackCfg || `${localConfigDir}/stacks.yml`;
+  const globalCfg = cfg.globalCfg || `${localCfgDir}/global.yml`;
+  const stackCfg = cfg.stackCfg || `${localCfgDir}/stacks.yml`;
   const s3CfTemplateDir = cfg.s3CfTemplateDir || `/${args.env}/templates`;
   const s3LambdaDir = cfg.s3LambdaDir || `/${args.env}/lambda`;
 
   return {
     localCfTemplateDir: localCfTemplateDir,
     localCfgDir: localCfgDir,
-    globalConfig: globalConfig,
+    globalCfg: globalCfg,
+    stackCfg: stackCfg,
     s3CfTemplateDir: s3CfTemplateDir,
     s3LambdaDir: s3LambdaDir
   }
@@ -63,7 +61,7 @@ function parseArgs(argv) {
                                   : undefined )
 
   return {
-    env: argv['_'][0],
+    environment: argv['_'][0],
     action: action,
     region: argv['r'] || argv['region'],
     profile: argv['p'],
@@ -98,16 +96,16 @@ function renderConfig(myVars, templateVars) {
   var myVars = JSON.parse(nunjucks.renderString(JSON.stringify(myVars), templateVars));
   _.forOwn(myVars, function(v, k) {
     if (typeof v === "string" && v.includes('{{') && v.includes('}}'))
-      myVars = parseConfig(myVars, templateVars);
+      myVars = renderConfig(myVars, templateVars);
   });
   return myVars;
 }
 
 // render and validate config
 function loadEnvConfig(envVars, schema) {
-  envVars = parseConfig(envVars);
+  envVars = renderConfig(envVars);
   if (!(isValidJsonSchema(schema, envVars))) {
-    throw new Error('Invalid environment configuration!');
+    throw new Error('Environment config failed schema validation');
   }
   return envVars;
 }
@@ -121,25 +119,11 @@ function isValidJsonSchema(schema, spec) {
   return true;
 }
 
-function loadStackConfig(stackVars, envVars, schema) {
-  var myVars = parseConfig(stackVars, envVars);
-
-  // validate and add config-specific properties:
-  _.forEach(myVars, function(v, k) {
-    if (!isValidJsonSchema(schema, v)) throw new Error('Stack does not match schema!');
-    v.application = envVars.application;
-    v.environment = envVars.environment;
-    v.account = envVars.account;
-  });
-  return myVars;
-}
-
-
 module.exports = {
   parseArgs: parseArgs,
   filterStacks: filterStacks,
   renderConfig: renderConfig,
   loadEnvConfig: loadEnvConfig,
-  loadStackConfig: loadStackConfig,
+  loadNodeCfConfig: loadNodeCfConfig,
   isValidJsonSchema: isValidJsonSchema,
 }
