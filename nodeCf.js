@@ -76,7 +76,7 @@ class CfStack {
         .tail()
         .fromPairs()
         .value());
-    console.log(`deployed ${stack.deployName}`);
+    console.log(`deployed ${this.deployName}`);
     return this;
   }
 
@@ -275,8 +275,8 @@ module.exports = function(region, profile) {
     async deploy(stacks, envVars) {
       var stackOutputs = {};
       await Promise.each(stacks, async(stack) => {
-        stackOutputs[stack.name] = await stack.deploy(envVars, 
-          stackOutputs).outputs;
+        stackOutputs[stack.name] = (await stack.deploy(envVars, 
+          stackOutputs)).outputs;
       });
     },
 
