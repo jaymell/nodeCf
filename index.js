@@ -101,7 +101,7 @@ async function main() {
   try {
     nodeCf = require('./nodeCf.js')(envVars.region, args.profile);
   } catch (e) {
-    console.log(`Failed to load nodeCf module: ${e.message}`);
+    console.log('Failed to load nodeCf module: ', e);
     process.exit(1);
   }
 
@@ -117,26 +117,26 @@ async function main() {
   switch (args.action) {
     case 'deploy':
       try {
-        await nodeCf.deploy(stacks);
+        await nodeCf.deploy(stacks, envVars);
       } catch (e) {
-        console.log(`deployment failed: ${e.message}`)
-        process.exit(1)
+        console.log(`deployment failed: `, e);
+        process.exit(1);
       }
       break;
     case 'validate':
       try {
-        await deployment.validate(stacks);
+        await nodeCf.validate(stacks, envVars);
       } catch (e) {
-        console.log(`validation failed: ${e.message}`)
-        process.exit(1)
+        console.log(`validation failed: `, e);
+        process.exit(1);
       }
       break;
     case 'delete':
       try {
-        await deployment.delete(stacks);
+        await nodeCf.delete(stacks);
       } catch (e) {
-        console.log(`delete failed: ${e.message}`)
-        process.exit(1)
+        console.log(`delete failed: `, e);
+        process.exit(1);
       }
       break;
     default:
@@ -145,3 +145,8 @@ async function main() {
 }
 
 main()
+
+process.on('unhandledRejection', (reason, p) => {
+  console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+  process.exit(1);
+});

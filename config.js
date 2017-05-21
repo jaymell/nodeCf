@@ -22,8 +22,8 @@ function loadNodeCfConfig(args) {
   const localCfgDir =  cfg.localCfgDir || `./config`;
   const globalCfg = cfg.globalCfg || `${localCfgDir}/global.yml`;
   const stackCfg = cfg.stackCfg || `${localCfgDir}/stacks.yml`;
-  const s3CfTemplateDir = cfg.s3CfTemplateDir || `/${args.env}/templates`;
-  const s3LambdaDir = cfg.s3LambdaDir || `/${args.env}/lambda`;
+  const s3CfTemplateDir = cfg.s3CfTemplateDir || `/${args.environment}/templates`;
+  const s3LambdaDir = cfg.s3LambdaDir || `/${args.environment}/lambda`;
 
   return {
     localCfTemplateDir: localCfTemplateDir,
@@ -106,6 +106,15 @@ function loadEnvConfig(envVars, schema) {
   envVars = renderConfig(envVars);
   if (!(isValidJsonSchema(schema, envVars))) {
     throw new Error('Environment config failed schema validation');
+  }
+  return envVars;
+}
+
+// render and validate config
+function loadStackConfig(stackVars, envVars, schema) {
+  stackVars = renderConfig(stackVars, envVars);
+  if (!(isValidJsonSchema(schema, envVars))) {
+    throw new Error('Stack config failed schema validation');
   }
   return envVars;
 }

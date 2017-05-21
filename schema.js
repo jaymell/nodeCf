@@ -1,5 +1,7 @@
 // schema to validate stacks
 // defined in config files
+// NOTE: this is validating individual stacks
+// in the file, not the file itself:
 const cfStackConfigSchema = {
   properties: {
     name: {

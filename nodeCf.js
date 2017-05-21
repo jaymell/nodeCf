@@ -2,16 +2,22 @@ const Promise = require('bluebird');
 const _ = require('lodash');
 const fs = Promise.promisifyAll(require('fs'));
 const path = require("path");
+const config = require('./config.js');
 var AWS = require('aws-sdk');;
 AWS.config.setPromisesDependency(Promise);
 
-const wrap = _.curry((wk, wv, obj) => _.toPairs(obj).map((it) => _.zipObject([wk, wv], it)))
-const wrapWith = _.curry((k, v, items) => _.flatMap(items, wrap(k, v)))
+const wrap = _.curry((wk, wv, obj) => 
+  _.toPairs(obj).map((it) => 
+    _.zipObject([wk, wv], it)));
+
+const wrapWith = _.curry((k, v, items) => 
+  _.flatMap(items, wrap(k, v)));
 
 class CfStack {
   constructor(stackVars, nodeCfConfig) {
     // _.merge(this, spec)
-    this.stackVars = stackVars;
+    this.name = stackVars.name;
+    this.rawStackVars = stackVars;
     this.nodeCfConfig = nodeCfConfig;
     // FIXME: the following implicitly requires the stack name to not have 
     // any templated values in it (should make that explicit:
@@ -24,30 +30,35 @@ class CfStack {
   // variables needed by previously deployed stacks
   // can be used
   load(envVars, stackOutputs) {
+    this.renderedStackVars = config.renderConfig(this.rawStackVars,
+      _.assign(this.envVars, this.stackOutputs))
     this.infraBucket = envVars.infraBucket;
-    this.parameters = wrapWith("ParameterKey", "ParameterValue", spec.parameters);
-    this.tags = wrapWith("Key", "Value", spec.tags);
-    this.deployName = `${envVars.environment}-${envVars.application}-${envVars.name}`;
+    this.parameters = wrapWith("ParameterKey", "ParameterValue", 
+      this.renderedStackVars.parameters);
+    this.tags = wrapWith("Key", "Value", this.renderedStackVars.tags);
+    this.deployName = `${envVars.environment}-${envVars.application}-${this.name}`;
   }
 
   async uploadTemplate() {
     await ensureBucket(this.infraBucket);
     const timestamp = new Date().getTime();
     this.s3Location = path.join(this.nodeCfConfig.s3CfTemplateDir,
-      `${this.stackVars.name}-${timestamp}.yml`);
+      `${this.name}-${timestamp}.yml`);
     return await s3Upload(this.infraBucket, this.template, this.s3Location);
   }
 
-  async validate() {
-    console.log(`validating cloudformation stack ${src}`);
+  async validate(envVars) {
+    this.load(envVars);
+    await ensureBucket(this.infraBucket);
     const s3Resp = await this.uploadTemplate()
     await validateAwsCfStack({
       TemplateURL: s3Resp.Location,
     });
-    console.log(`${src} is a valid Cloudformation template`);
+    console.log(`${this.name} is a valid Cloudformation template`);
   }
 
-  async deploy() {
+  async deploy(envVars, stackOutputs) {
+    this.load(envVars, stackOutputs);
     await ensureBucket(this.infraBucket);
     const s3Resp = await this.uploadTemplate()
     const stackResp = await ensureAwsCfStack({
@@ -66,6 +77,7 @@ class CfStack {
         .fromPairs()
         .value());
     console.log(`deployed ${stack.deployName}`);
+    return this;
   }
 
   async delete() {
@@ -92,7 +104,7 @@ async function getTemplateFile(templateDir, stackName) {
   const f = await Promise.any(_.map(['yml', 'json', 'yaml'], async(ext) => 
     await fileExists(`${path.join(templateDir, stackName)}.${ext}`)));
   if (f) return f;
-  else throw new Error('Stack template not found!'); 
+  else throw new Error(`Stack template "${stackName}" not found!`); 
 }
 
 // return promise that resolves to true/false or rejects with error
@@ -130,7 +142,7 @@ async function ensureBucket(bucket) {
 
 function s3Upload(bucket, src, dest) {
   const cli = new AWS.S3();
-  console.log(`uploading template ${src} to s3://${bucket}/${dest}`);
+  console.log(`uploading template ${src} to s3://${path.join(bucket, dest)}`);
   const stream = fs.createReadStream(src);
   return cli.upload({
     Bucket: bucket,
@@ -254,9 +266,17 @@ module.exports = function(region, profile) {
   return {
     CfStack: CfStack,
 
-    async validate(stacks) {
+    async validate(stacks, envVars) {
       await Promise.each(stacks, async(stack) => {
-        await stack.validate();
+        await stack.validate(envVars);
+      });
+    },
+
+    async deploy(stacks, envVars) {
+      var stackOutputs = {};
+      await Promise.each(stacks, async(stack) => {
+        stackOutputs[stack.name] = await stack.deploy(envVars, 
+          stackOutputs).outputs;
       });
     },
 
@@ -266,11 +286,5 @@ module.exports = function(region, profile) {
         await stack.delete();
       });
     },
-
-    async deploy(stacks) {
-      await Promise.each(stacks, async(stack) => {
-        await stack.deploy();
-      });
-    }
   };
 };
