@@ -69,13 +69,10 @@ class CfStack {
       Capabilities: [ 'CAPABILITY_IAM', 
         'CAPABILITY_NAMED_IAM' ]
     });
-    this.outputs = _.map(stackResp.Outputs, (it) => 
-      _(it).pick(['OutputKey', 'OutputValue'])
-        .toPairs()
-        .unzip()
-        .tail()
-        .fromPairs()
-        .value());
+    this.outputs = _.chain(stackResp.Outputs)
+      .keyBy('OutputKey')
+      .mapValues('OutputValue')
+      .value();
     console.log(`deployed ${this.deployName}`);
     return this;
   }
@@ -214,9 +211,10 @@ async function ensureAwsCfStack(params) {
   } else {
     await createAwsCfStack(params)
   }
-  return await cli.describeStacks({
+  const outputs = await cli.describeStacks({
     StackName: params.StackName
   }).promise()
+  return outputs.Stacks[0];
 }
 
 async function deleteAwsCfStack(params) {
@@ -275,9 +273,12 @@ module.exports = function(region, profile) {
     async deploy(stacks, envVars) {
       var stackOutputs = {};
       await Promise.each(stacks, async(stack) => {
-        stackOutputs[stack.name] = (await stack.deploy(envVars, 
-          stackOutputs)).outputs;
+        stackOutputs[stack.name] = {};
+        const deployed = await stack.deploy(envVars, 
+          stackOutputs);
+        stackOutputs[stack.name]['outputs'] = deployed.outputs;
       });
+      console.log('stackOutputs: ', _.chain(stacks).keyBy('name').value())
     },
 
     async delete(stacks) {
