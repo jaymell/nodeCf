@@ -1,13 +1,27 @@
-var _ = require('lodash');
+var assert = require('assert');
+var config = require('../config.js');
+var rewire = require("rewire");
+var nodeCf = rewire('../nodeCf.js');
 
-var output = [
-  {"OutputKey": "Key1", "OutputValue": "Value1", "Description": "Desc1"},
-  {"OutputKey": "Key2", "OutputValue": "Value2", "Description": "Desc2"},
-  {"OutputKey": "Key3", "OutputValue": "Value3" }
-];
+const wrapWith = nodeCf.__get__('wrapWith');
 
-_.map(output, (it) => _(it).pick(['OutputKey', 'OutputValue']).toPairs().unzip().tail().zipObject().value());
+describe('successful tests', function() {
 
+  it('input key/value pairs should return wrapped array', function() {
+    const output = [
+      {"ParameterKey": "Key1", "ParameterValue": "Value1"},
+      {"ParameterKey": "Key2", "ParameterValue": "Value2"},
+    ];
 
-_.chain(output).keyBy('OutputKey').mapValues('OutputValue').value();
+    const input = {
+      Key1: "Value1", 
+      Key2: "Value2"  
+    };
+
+    const result = wrapWith('ParameterKey', 'ParameterValue', input);
+
+    assert.deepEqual(result, output);
+
+  });
+});
 

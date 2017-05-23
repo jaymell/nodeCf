@@ -1,5 +1,5 @@
 var assert = require('assert');
-var cli = require('../cli.js');
+var config = require('../config.js');
 
 describe('filterStacks', function() {
   const mockStacks = { 
@@ -15,16 +15,16 @@ describe('filterStacks', function() {
   ];
 
   it('should throw if stackFilters contains a non-existent stack name', function() {
-    assert.throws(() => cli.filterStacks(mockStacks, ['test1', 'test2', 'test3', 'test4'])
+    assert.throws(() => config.filterStacks(mockStacks, ['test1', 'test2', 'test3', 'test4'])
 
     );
   });
 
   it('should return stack specified', function() {
-    assert.deepEqual(cli.filterStacks(mockStacks, ['test1']), mockStacksResp);
+    assert.deepEqual(config.filterStacks(mockStacks, ['test1']), mockStacksResp);
   });
 
   it('should return stacks if no filters passed', function() {
-    assert.deepEqual(cli.filterStacks(mockStacks, []), mockStacks.stacks);
+    assert.deepEqual(config.filterStacks(mockStacks, []), mockStacks.stacks);
   });
 });

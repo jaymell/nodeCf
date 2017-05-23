@@ -6,12 +6,9 @@ const config = require('./config.js');
 var AWS = require('aws-sdk');;
 AWS.config.setPromisesDependency(Promise);
 
-const wrap = _.curry((wk, wv, obj) => 
+var wrapWith = (wk, wv, obj) => 
   _.toPairs(obj).map((it) => 
-    _.zipObject([wk, wv], it)));
-
-const wrapWith = _.curry((k, v, items) => 
-  _.flatMap(items, wrap(k, v)));
+    _.zipObject([wk, wv], it));
 
 class CfStack {
   constructor(stackVars, nodeCfConfig) {

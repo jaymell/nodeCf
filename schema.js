@@ -9,30 +9,22 @@ const cfStackConfigSchema = {
       pattern: "^[a-zA-Z0-9\-]+$"
     },
     tags: {
-      type: "array",
-      items: {
-        type: "object",
-        patternProperties: {
-          "^[a-zA-Z0-9]+$": {
-            type: "string"
-          }
-        },
-        additionalProperties: false
+      type: "object",
+      patternProperties: {
+        "^[a-zA-Z0-9]+$": {
+          type: "string"
+        }
       },
-      additionalItems: false
+      additionalProperties: false
     },
     parameters: {
-      type: "array",
-      items: {
-        type: "object",
-        patternProperties: {
-          "^[a-zA-Z0-9]+$": {
-            type: "string"
-          }
-        },
-        additionalProperties: false
+      type: "object",
+      patternProperties: {
+        "^[a-zA-Z0-9]+$": {
+          type: "string"
+        }
       },
-      additionalItems: false
+      additionalProperties: false
     },
     deps: {
       type: "array",
