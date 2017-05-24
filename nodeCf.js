@@ -16,17 +16,15 @@ class CfStack {
     this.name = stackVars.name;
     this.rawStackVars = stackVars;
     this.nodeCfConfig = nodeCfConfig;
-    // FIXME: the following implicitly requires the stack name to not have 
-    // any templated values in it (should make that explicit:
-    this.template;
-    getTemplateFile(nodeCfConfig.localCfTemplateDir, stackVars.name)
-      .then(f => this.template = f);
   }
 
   // this happens just prior to deployment, so that any
   // variables needed by previously deployed stacks
   // can be used
-  load(envVars, stackOutputs) {
+  async load(envVars, stackOutputs) {
+    this.template = await getTemplateFile(nodeCfConfig.localCfTemplateDir, 
+      stackVars.name)
+      .then(f => this.template = f);
     this.renderedStackVars = config.renderConfig(this.rawStackVars,
       _.assign(this.envVars, this.stackOutputs))
     this.infraBucket = envVars.infraBucket;
@@ -45,7 +43,7 @@ class CfStack {
   }
 
   async validate(envVars) {
-    this.load(envVars);
+    await this.load(envVars);
     await ensureBucket(this.infraBucket);
     const s3Resp = await this.uploadTemplate()
     await validateAwsCfStack({
@@ -55,7 +53,7 @@ class CfStack {
   }
 
   async deploy(envVars, stackOutputs) {
-    this.load(envVars, stackOutputs);
+    await this.load(envVars, stackOutputs);
     await ensureBucket(this.infraBucket);
     const s3Resp = await this.uploadTemplate()
     const stackResp = await ensureAwsCfStack({
@@ -251,38 +249,36 @@ function configAws(params) {
 
 }
 
-module.exports = function(region, profile) {
-
-  configAws({
-    profile: profile,
-    region: region
+async function validate(stacks, envVars) {
+  await Promise.each(stacks, async(stack) => {
+    await stack.validate(envVars);
   });
+}
 
-  return {
+async function deploy(stacks, envVars) {
+  var stackOutputs = {};
+  await Promise.each(stacks, async(stack) => {
+    stackOutputs[stack.name] = {};
+    const deployed = await stack.deploy(envVars, 
+      stackOutputs);
+    stackOutputs[stack.name]['outputs'] = deployed.outputs;
+  });
+  console.log('stackOutputs: ', _.chain(stacks).keyBy('name').value())
+}
+
+async function deleteStacks(stacks) {
+  // reverse array prior to deletion:
+  await Promise.each(stacks.reverse(), async(stack) => {
+    await stack.delete();
+  });
+}
+
+module.exports = {
+    configAws: configAws,
     CfStack: CfStack,
-
-    async validate(stacks, envVars) {
-      await Promise.each(stacks, async(stack) => {
-        await stack.validate(envVars);
-      });
-    },
-
-    async deploy(stacks, envVars) {
-      var stackOutputs = {};
-      await Promise.each(stacks, async(stack) => {
-        stackOutputs[stack.name] = {};
-        const deployed = await stack.deploy(envVars, 
-          stackOutputs);
-        stackOutputs[stack.name]['outputs'] = deployed.outputs;
-      });
-      console.log('stackOutputs: ', _.chain(stacks).keyBy('name').value())
-    },
-
-    async delete(stacks) {
-      // reverse array prior to deletion:
-      await Promise.each(stacks.reverse(), async(stack) => {
-        await stack.delete();
-      });
-    },
-  };
+    validate: validate,
+    delete: deleteStacks,
+    deploy: deploy,
+    getTemplateFile: getTemplateFile,
+    wrapWith: wrapWith
 };

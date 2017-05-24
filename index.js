@@ -7,6 +7,7 @@ const _ = require('lodash');
 const config = require('./config.js');
 const path = require('path');
 const schema = require('./schema.js');
+const nodeCf = require('./nodeCf.js');
 
 function usage() {
   const usageStr = `\n\tUsage: node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] [ -s,--stacks <STACK NAMES> ]`
@@ -97,11 +98,14 @@ async function main() {
     process.exit(1);  
   }
 
-  var nodeCf;
   try {
-    nodeCf = require('./nodeCf.js')(envVars.region, args.profile);
+    // FIXME: this is stupid
+    nodeCf.configAws({
+      profile: args.profile,
+      region: envVars.region
+    });
   } catch (e) {
-    console.log('Failed to load nodeCf module: ', e);
+    console.log('Failed to set AWS config: ', e);
     process.exit(1);
   }
 

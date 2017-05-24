@@ -9,7 +9,7 @@ var fileExistsOrig = nodeCf.__get__('fileExists');
 
 describe('getTemplateFile', function() {
   before(function() { 
-  	nodeCf.__set__('fileExists', async function(f) { 
+  	nodeCf.__set__('fileExists', function(f) { 
   	  if (f.endsWith('json')) return f
   	  else throw new Error();
   	});
@@ -28,7 +28,7 @@ describe('getTemplateFile', function() {
 
 describe('getTemplateFile', function() {
   before(function() { 
-    nodeCf.__set__('fileExists', async function(f) { 
+    nodeCf.__set__('fileExists', function(f) { 
       if (f.endsWith('yml')) return f
       else throw new Error();
     });

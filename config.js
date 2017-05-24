@@ -134,5 +134,7 @@ module.exports = {
   renderConfig: renderConfig,
   loadEnvConfig: loadEnvConfig,
   loadNodeCfConfig: loadNodeCfConfig,
+  loadStackConfig: loadStackConfig,
   isValidJsonSchema: isValidJsonSchema,
+  renderConfig: renderConfig
 }
