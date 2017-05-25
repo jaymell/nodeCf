@@ -28,3 +28,25 @@ describe('filterStacks', function() {
     assert.deepEqual(config.filterStacks(mockStacks, []), mockStacks.stacks);
   });
 });
+
+describe('renderConfig', function() {
+  const templ = {
+    testKey1: "{{templ1}}",
+    testKey2:  "{{templ2.value}}"
+  };
+  const myVars = {
+    templ1: "testValue1",
+    templ2: {
+      value: "testValue2"
+    }
+  };
+  const result = {
+    testKey1: 'testValue1',
+    testKey2: 'testValue2'
+  }
+
+  it('should successfully render jinja2-style parameters', () => {
+    assert.deepEqual(config.renderConfig(templ, myVars), result);
+  });
+});
+

@@ -22,11 +22,11 @@ class CfStack {
   // variables needed by previously deployed stacks
   // can be used
   async load(envVars, stackOutputs) {
-    this.template = await getTemplateFile(nodeCfConfig.localCfTemplateDir, 
-      stackVars.name)
+    this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir, 
+      this.rawStackVars.name)
       .then(f => this.template = f);
     this.renderedStackVars = config.renderConfig(this.rawStackVars,
-      _.assign(this.envVars, this.stackOutputs))
+      _.assign(envVars, stackOutputs))
     this.infraBucket = envVars.infraBucket;
     this.parameters = wrapWith("ParameterKey", "ParameterValue", 
       this.renderedStackVars.parameters);
@@ -256,14 +256,13 @@ async function validate(stacks, envVars) {
 }
 
 async function deploy(stacks, envVars) {
-  var stackOutputs = {};
+  var stackOutputs = { stacks: {} };
   await Promise.each(stacks, async(stack) => {
-    stackOutputs[stack.name] = {};
+    stackOutputs.stacks[stack.name] = {};
     const deployed = await stack.deploy(envVars, 
       stackOutputs);
-    stackOutputs[stack.name]['outputs'] = deployed.outputs;
+    stackOutputs.stacks[stack.name]['outputs'] = deployed.outputs;
   });
-  console.log('stackOutputs: ', _.chain(stacks).keyBy('name').value())
 }
 
 async function deleteStacks(stacks) {
