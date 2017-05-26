@@ -3,6 +3,8 @@ const _ = require('lodash');
 const fs = Promise.promisifyAll(require('fs'));
 const path = require("path");
 const config = require('./config.js');
+const schema = require('./schema.js');
+const util = require('./util.js');
 var AWS = require('aws-sdk');;
 AWS.config.setPromisesDependency(Promise);
 
@@ -16,17 +18,18 @@ class CfStack {
     this.name = stackVars.name;
     this.rawStackVars = stackVars;
     this.nodeCfConfig = nodeCfConfig;
+    this.schema = schema.cfStackConfigSchema;
   }
 
   // this happens just prior to deployment, so that any
   // variables needed by previously deployed stacks
   // can be used
-  async load(envVars, stackOutputs) {
+  async load(nj, envVars, stackOutputs) {
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir, 
       this.rawStackVars.name)
       .then(f => this.template = f);
-    this.renderedStackVars = config.renderConfig(this.rawStackVars,
-      _.assign(envVars, stackOutputs))
+    this.renderedStackVars = config.loadStackConfig(nj, 
+        this.rawStackVars, _.assign(envVars, stackOutputs), this.schema);
     this.infraBucket = envVars.infraBucket;
     this.parameters = wrapWith("ParameterKey", "ParameterValue", 
       this.renderedStackVars.parameters);
@@ -42,8 +45,8 @@ class CfStack {
     return await s3Upload(this.infraBucket, this.template, this.s3Location);
   }
 
-  async validate(envVars) {
-    await this.load(envVars);
+  async validate(nj, envVars) {
+    await this.load(nj, envVars);
     await ensureBucket(this.infraBucket);
     const s3Resp = await this.uploadTemplate()
     await validateAwsCfStack({
@@ -52,8 +55,8 @@ class CfStack {
     console.log(`${this.name} is a valid Cloudformation template`);
   }
 
-  async deploy(envVars, stackOutputs) {
-    await this.load(envVars, stackOutputs);
+  async deploy(nj, envVars, stackOutputs) {
+    await this.load(nj, envVars, stackOutputs);
     await ensureBucket(this.infraBucket);
     const s3Resp = await this.uploadTemplate()
     const stackResp = await ensureAwsCfStack({
@@ -80,21 +83,10 @@ class CfStack {
   }
 }
 
-// return filename if exists, else false
-async function fileExists(f) {
-  try {
-    await fs.statAsync(f);
-    return f;
-  } catch (e) {
-    if (e.code !== 'ENOENT') throw e;
-    return false;
-  }
-}
-
 // look for template having multiple possible file extensions
 async function getTemplateFile(templateDir, stackName) {
   const f = await Promise.any(_.map(['yml', 'json', 'yaml'], async(ext) => 
-    await fileExists(`${path.join(templateDir, stackName)}.${ext}`)));
+    await util.fileExists(`${path.join(templateDir, stackName)}.${ext}`)));
   if (f) return f;
   else throw new Error(`Stack template "${stackName}" not found!`); 
 }
@@ -235,7 +227,6 @@ async function validateAwsCfStack(params) {
 }
 
 function configAws(params) {
-
   if (typeof params.profile !== 'undefined' && params.profile) {
     var credentials = new AWS.SharedIniFileCredentials({
       profile: params.profile
@@ -246,21 +237,19 @@ function configAws(params) {
   AWS.config.update({
     region: params.region
   });
-
 }
 
-async function validate(stacks, envVars) {
+async function validate(nj, stacks, envVars) {
   await Promise.each(stacks, async(stack) => {
-    await stack.validate(envVars);
+    await stack.validate(nj, envVars);
   });
 }
 
-async function deploy(stacks, envVars) {
+async function deploy(nj, stacks, envVars) {
   var stackOutputs = { stacks: {} };
   await Promise.each(stacks, async(stack) => {
     stackOutputs.stacks[stack.name] = {};
-    const deployed = await stack.deploy(envVars, 
-      stackOutputs);
+    const deployed = await stack.deploy(nj, envVars, stackOutputs);
     stackOutputs.stacks[stack.name]['outputs'] = deployed.outputs;
   });
 }

@@ -20,19 +20,45 @@ function loadNodeCfConfig(args) {
 
   const localCfTemplateDir = cfg.localCfTemplateDir || `./templates`;
   const localCfgDir =  cfg.localCfgDir || `./config`;
-  const globalCfg = cfg.globalCfg || `${localCfgDir}/global.yml`;
-  const stackCfg = cfg.stackCfg || `${localCfgDir}/stacks.yml`;
+  const filters = cfg.filters || `${localCfgDir}/filters.js`;
   const s3CfTemplateDir = cfg.s3CfTemplateDir || `/${args.environment}/templates`;
   const s3LambdaDir = cfg.s3LambdaDir || `/${args.environment}/lambda`;
+  const globalCfg = cfg.globalCfg || `${localCfgDir}/global.yml`;
+  const stackCfg = cfg.stackCfg || `${localCfgDir}/stacks.yml`;
 
   return {
     localCfTemplateDir: localCfTemplateDir,
     localCfgDir: localCfgDir,
+    filters: filters,
     globalCfg: globalCfg,
     stackCfg: stackCfg,
     s3CfTemplateDir: s3CfTemplateDir,
     s3LambdaDir: s3LambdaDir
   }
+}
+
+// filters should be object of functions
+function loadNjEnv(filters) {
+  const env = new nunjucks.Environment();
+  if ( typeof filters !== 'undefined') {
+    _.forEach(filters, it => env.addFilter(it.name, it));  
+  }
+  return env;
+}
+
+// given a string of one or more key-value pairs
+// separated by '=', convert and return object
+function parseExtraVars(extraVars) {
+  if (!(_.isString(extraVars))) {
+    return undefined
+  }
+  const myVars = _.split(extraVars, ' ').map(it => {
+    const v = _.split(it, '=')
+    if ( v.length != 2 ) 
+      throw new Error("Can't parse variable");
+    return v
+  });
+  return _.fromPairs(myVars)
 }
 
 // validate command line arguments
@@ -56,12 +82,14 @@ function parseArgs(argv) {
     }
   } 
 
-  var getStackNames = stacks => ( _.isString(stacks) ? 
-                                  _.map(stacks.split(','), stack => stack.trim()) 
-                                  : undefined )
+  var getStackNames = stacks => 
+    ( _.isString(stacks) ? 
+      _.map(stacks.split(','), stack => stack.trim()) 
+      : undefined );
 
   return {
     environment: argv['_'][0],
+    extraVars: parseExtraVars(argv['e'] || argv['extraVars']),
     action: action,
     region: argv['r'] || argv['region'],
     profile: argv['p'],
@@ -87,7 +115,7 @@ function filterStacks(stacks, stackFilters) {
 
 // allows for referencing other variables within the config;
 // recurse until there aren't any more values to be rendered:
-function renderConfig(myVars, templateVars) {
+function renderConfig(nj, myVars, templateVars) {
   if (typeof templateVars === 'undefined') {
     // use variables as inputs
     // for their own rendering
@@ -96,14 +124,14 @@ function renderConfig(myVars, templateVars) {
   var myVars = JSON.parse(nunjucks.renderString(JSON.stringify(myVars), templateVars));
   _.forOwn(myVars, function(v, k) {
     if (typeof v === "string" && v.includes('{{') && v.includes('}}'))
-      myVars = renderConfig(myVars, templateVars);
+      myVars = renderConfig(nj, myVars, templateVars);
   });
   return myVars;
 }
 
 // render and validate config
-function loadEnvConfig(envVars, schema) {
-  envVars = renderConfig(envVars);
+function loadEnvConfig(nj, envVars, schema) {
+  envVars = renderConfig(nj, envVars);
   if (!(isValidJsonSchema(schema, envVars))) {
     throw new Error('Environment config failed schema validation');
   }
@@ -111,12 +139,12 @@ function loadEnvConfig(envVars, schema) {
 }
 
 // render and validate config
-function loadStackConfig(stackVars, envVars, schema) {
-  stackVars = renderConfig(stackVars, envVars);
+function loadStackConfig(nj, stackVars, envVars, schema) {
+  stackVars = renderConfig(nj, stackVars, envVars);
   if (!(isValidJsonSchema(schema, envVars))) {
     throw new Error('Stack config failed schema validation');
   }
-  return envVars;
+  return stackVars;
 }
 
 function isValidJsonSchema(schema, spec) {
@@ -129,11 +157,12 @@ function isValidJsonSchema(schema, spec) {
 }
 
 module.exports = {
+  parseExtraVars: parseExtraVars,
   parseArgs: parseArgs,
   filterStacks: filterStacks,
-  renderConfig: renderConfig,
   loadEnvConfig: loadEnvConfig,
   loadNodeCfConfig: loadNodeCfConfig,
+  loadNjEnv: loadNjEnv,
   loadStackConfig: loadStackConfig,
   isValidJsonSchema: isValidJsonSchema,
   renderConfig: renderConfig

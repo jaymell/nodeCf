@@ -8,23 +8,29 @@ const config = require('./config.js');
 const path = require('path');
 const schema = require('./schema.js');
 const nodeCf = require('./nodeCf.js');
+const util = require('./util.js');
 
 function usage() {
-  const usageStr = `\n\tUsage: node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] [ -s,--stacks <STACK NAMES> ]`
+  // FIXME: add more description here
+  const usageStr = `\n\tUsage: node_modules/.bin/nodeCf <ENVIRONMENT> ` +
+                   `[ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] ` +
+                   `[-e, --extraVars <VARIABLES>] ` +
+                   `[ -s,--stacks <STACK NAMES> ] ` +
+                   `\n\n\tVARIABLES should be "Key=Value" pairs; several can be passed if separated by space\n`
   console.log(usageStr);
   process.exit(-1);
 }
 
 async function main() {
 
-  var args, nodeCfCfg, globalVars, envVars;
+  var args, nodeCfCfg, nj, globalVars, envVars;
 
   try {
     args = config.parseArgs(
       require('minimist')(process.argv.slice(2), {default: {region: 'us-east-1'}})
     );
   } catch (e) {
-    console.log(e.message);
+    console.log(`Failed to parse command line arguments: ${e.message}`);
     usage();
   }
 
@@ -36,12 +42,27 @@ async function main() {
     usage();
   }
 
+  // instantiate nunjucks renderer
+  try {
+    console.log('DIIIIIIS: ', nodeCfCfg.filters)
+    var filters = await util.fileExists(nodeCfCfg.filters);
+    if ( filters ) {
+      filters = require(path.join(__dirname, filters));
+      nj = config.loadNjEnv(filters);
+    } else {
+      nj = config.loadNjEnv();
+    }
+  } catch (e) {
+    console.log('Failed to load Nunjucks environment: ', e);
+    process.exit(1);
+  }
+  
   // FIXME: global should probably just be optional
   try {
     globalVars = yaml.safeLoad(
       fs.readFileSync(
         nodeCfCfg.globalCfg
-    ));  
+    ));
   } catch (e) {
     console.log(`Failed to load global config: ${e.message}`);
     process.exit(1);  
@@ -64,16 +85,16 @@ async function main() {
   try {
     // concatenate variables, with env-specific overriding global,
     // then render and validate:
-    envVars = config.loadEnvConfig(_.assign(globalVars, 
-      envVars, 
-      { environment: args.environment,
-        region: args.region
-    }), schema.envConfigSchema);
+    envVars = config.loadEnvConfig(nj, _.assign(globalVars, 
+        envVars, 
+        { environment: args.environment, region: args.region },
+        args.extraVars),
+      schema.envConfigSchema);
   } catch (e) {
     console.log(`Invalid environment configuration: ${e.message}`);
     process.exit(1);      
   }
-
+  console.log('envVars: ', envVars);
   try {
     // only run stacks that were passed on command line
     // (if none passed, all will be run):
@@ -121,7 +142,7 @@ async function main() {
   switch (args.action) {
     case 'deploy':
       try {
-        await nodeCf.deploy(stacks, envVars);
+        await nodeCf.deploy(nj, stacks, envVars);
       } catch (e) {
         console.log(`deployment failed: `, e);
         process.exit(1);
@@ -129,7 +150,7 @@ async function main() {
       break;
     case 'validate':
       try {
-        await nodeCf.validate(stacks, envVars);
+        await nodeCf.validate(nj, stacks, envVars);
       } catch (e) {
         console.log(`validation failed: `, e);
         process.exit(1);
