@@ -48,7 +48,8 @@ async function main() {
     var filters = await util.fileExists(path.join(process.cwd(), nodeCfCfg.filters));
     if ( filters ) {
       filters = require(filters);
-      nj = config.loadNjEnv(filters);
+      nj = config.loadNjEnv(filters.sync || filters);
+      nj = config.loadNjAsync(nj, filters.async);
     } else {
       nj = config.loadNjEnv();
     }
@@ -85,13 +86,13 @@ async function main() {
   try {
     // concatenate variables, with env-specific overriding global,
     // then render and validate:
-    envVars = config.loadEnvConfig(nj, _.assign(globalVars, 
+    envVars = await config.loadEnvConfig(nj, _.assign(globalVars, 
         envVars, 
         { environment: args.environment, region: args.region },
         args.extraVars),
       schema.envConfigSchema);
   } catch (e) {
-    console.log(`Invalid environment configuration: ${e.message}`);
+    console.log('Invalid environment configuration: ', e);
     process.exit(1);      
   }
   try {

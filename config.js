@@ -1,6 +1,7 @@
+const Promise = require('bluebird');
 const _ = require('lodash');
 const yaml = require('js-yaml'); 
-const nunjucks = require("nunjucks");
+const nunjucks = Promise.promisifyAll(require("nunjucks"));
 const Ajv = require('ajv');
 
 function loadNodeCfConfig(args) {
@@ -37,12 +38,24 @@ function loadNodeCfConfig(args) {
   }
 }
 
-// filters should be object of functions
+// filters should be object literal 
+// containing functions
 function loadNjEnv(filters) {
   const env = new nunjucks.Environment();
   if ( typeof filters !== 'undefined') {
     _.forEach(filters, it => {
       env.addFilter(it.name, it)});
+  }
+  return env;
+}
+
+// add async filters to nunjucks environment;
+// filters should be object literal containing
+// functions:
+function loadNjAsync(env, filters) {
+  if ( typeof filters !== 'undefined') {
+    _.forEach(filters, it => {
+      env.addFilter(it.name, it, true)});
   }
   return env;
 }
@@ -116,23 +129,24 @@ function filterStacks(stacks, stackFilters) {
 
 // allows for referencing other variables within the config;
 // recurse until there aren't any more values to be rendered:
-function renderConfig(nj, myVars, templateVars) {
+async function renderConfig(nj, myVars, templateVars) {
   if (typeof templateVars === 'undefined') {
     // use variables as inputs
     // for their own rendering
     templateVars = JSON.parse(JSON.stringify(myVars));
   }
-  var myVars = JSON.parse(nj.renderString(JSON.stringify(myVars), templateVars));
-  _.forOwn(myVars, function(v, k) {
+  var myVars = await nj.renderStringAsync(JSON.stringify(myVars), templateVars);
+  myVars = JSON.parse(myVars);
+  _.forOwn(myVars, async function(v, k) {
     if (typeof v === "string" && v.includes('{{') && v.includes('}}'))
-      myVars = renderConfig(nj, myVars, templateVars);
+      myVars = await renderConfig(nj, myVars, templateVars);
   });
   return myVars;
 }
 
 // render and validate config
-function loadEnvConfig(nj, envVars, schema) {
-  envVars = renderConfig(nj, envVars);
+async function loadEnvConfig(nj, envVars, schema) {
+  envVars = await renderConfig(nj, envVars);
   if (!(isValidJsonSchema(schema, envVars))) {
     throw new Error('Environment config failed schema validation');
   }
@@ -140,8 +154,8 @@ function loadEnvConfig(nj, envVars, schema) {
 }
 
 // render and validate config
-function loadStackConfig(nj, stackVars, envVars, schema) {
-  stackVars = renderConfig(nj, stackVars, envVars);
+async function loadStackConfig(nj, stackVars, envVars, schema) {
+  stackVars = await renderConfig(nj, stackVars, envVars);
   if (!(isValidJsonSchema(schema, stackVars))) {
     throw new Error('Stack config failed schema validation');
   }
@@ -164,6 +178,7 @@ module.exports = {
   loadEnvConfig: loadEnvConfig,
   loadNodeCfConfig: loadNodeCfConfig,
   loadNjEnv: loadNjEnv,
+  loadNjAsync: loadNjAsync,
   loadStackConfig: loadStackConfig,
   isValidJsonSchema: isValidJsonSchema,
   renderConfig: renderConfig

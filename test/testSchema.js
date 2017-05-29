@@ -3,7 +3,6 @@ const rewire = require("rewire");
 const config = require('../config.js');
 const nodeCf = rewire('../nodeCf.js');
 const schema = rewire('../schema.js');
-const Promise = require('bluebird');
 
 const cfStackConfigSchema = schema.__get__('cfStackConfigSchema');
 const envConfigSchema = schema.__get__('envConfigSchema');

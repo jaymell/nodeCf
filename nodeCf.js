@@ -28,7 +28,7 @@ class CfStack {
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir, 
       this.rawStackVars.name)
       .then(f => this.template = f);
-    this.renderedStackVars = config.loadStackConfig(nj, 
+    this.renderedStackVars = await config.loadStackConfig(nj, 
         this.rawStackVars, _.assign(envVars, stackOutputs), this.schema);
     this.infraBucket = envVars.infraBucket;
     this.parameters = wrapWith("ParameterKey", "ParameterValue", 
