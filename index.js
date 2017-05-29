@@ -44,10 +44,10 @@ async function main() {
 
   // instantiate nunjucks renderer
   try {
-    console.log('DIIIIIIS: ', nodeCfCfg.filters)
-    var filters = await util.fileExists(nodeCfCfg.filters);
+    // imported relative to current directory:
+    var filters = await util.fileExists(path.join(process.cwd(), nodeCfCfg.filters));
     if ( filters ) {
-      filters = require(path.join(__dirname, filters));
+      filters = require(filters);
       nj = config.loadNjEnv(filters);
     } else {
       nj = config.loadNjEnv();
@@ -94,7 +94,6 @@ async function main() {
     console.log(`Invalid environment configuration: ${e.message}`);
     process.exit(1);      
   }
-  console.log('envVars: ', envVars);
   try {
     // only run stacks that were passed on command line
     // (if none passed, all will be run):

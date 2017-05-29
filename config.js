@@ -41,7 +41,8 @@ function loadNodeCfConfig(args) {
 function loadNjEnv(filters) {
   const env = new nunjucks.Environment();
   if ( typeof filters !== 'undefined') {
-    _.forEach(filters, it => env.addFilter(it.name, it));  
+    _.forEach(filters, it => {
+      env.addFilter(it.name, it)});
   }
   return env;
 }
@@ -121,7 +122,7 @@ function renderConfig(nj, myVars, templateVars) {
     // for their own rendering
     templateVars = JSON.parse(JSON.stringify(myVars));
   }
-  var myVars = JSON.parse(nunjucks.renderString(JSON.stringify(myVars), templateVars));
+  var myVars = JSON.parse(nj.renderString(JSON.stringify(myVars), templateVars));
   _.forOwn(myVars, function(v, k) {
     if (typeof v === "string" && v.includes('{{') && v.includes('}}'))
       myVars = renderConfig(nj, myVars, templateVars);
@@ -141,7 +142,7 @@ function loadEnvConfig(nj, envVars, schema) {
 // render and validate config
 function loadStackConfig(nj, stackVars, envVars, schema) {
   stackVars = renderConfig(nj, stackVars, envVars);
-  if (!(isValidJsonSchema(schema, envVars))) {
+  if (!(isValidJsonSchema(schema, stackVars))) {
     throw new Error('Stack config failed schema validation');
   }
   return stackVars;

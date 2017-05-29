@@ -1,15 +1,15 @@
 var assert = require('assert');
 var rewire = require("rewire");
 var nodeCf = rewire('../nodeCf.js');
+const util = require('../util.js');
+const sinon = require('sinon');
 var Promise = require('bluebird');
 
 var getTemplateFile = nodeCf.__get__('getTemplateFile');
-var fileExistsOrig = nodeCf.__get__('fileExists');
-
 
 describe('getTemplateFile', function() {
   before(function() { 
-  	nodeCf.__set__('fileExists', function(f) { 
+  	sinon.stub(util, 'fileExists', function(f) { 
   	  if (f.endsWith('json')) return f
   	  else throw new Error();
   	});
@@ -21,14 +21,14 @@ describe('getTemplateFile', function() {
   });
 
   after(function() { 
-  	nodeCf.__set__('fileExists', fileExistsOrig);
+  	util.fileExists.restore();
   });
 });
 
 
 describe('getTemplateFile', function() {
   before(function() { 
-    nodeCf.__set__('fileExists', function(f) { 
+    sinon.stub(util, 'fileExists', function(f) { 
       if (f.endsWith('yml')) return f
       else throw new Error();
     });
@@ -40,14 +40,14 @@ describe('getTemplateFile', function() {
   });
 
   after(function() { 
-  	nodeCf.__set__('fileExists', fileExistsOrig);
+  	util.fileExists.restore();
   });
 });
 
 
 describe('getTemplateFile', function() {
   before(function() { 
-    nodeCf.__set__('fileExists', function(f) { 
+    sinon.stub(util, 'fileExists', function(f) { 
       if (f.endsWith('yaml')) return f
       else throw new Error();
     });
@@ -59,7 +59,7 @@ describe('getTemplateFile', function() {
   });
 
   after(function() { 
-  	nodeCf.__set__('fileExists', fileExistsOrig);
+  	util.fileExists.restore();
   });
 });
 

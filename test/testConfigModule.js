@@ -45,8 +45,10 @@ describe('renderConfig', function() {
     testKey2: 'testValue2'
   }
 
+  const nj = require('nunjucks');
+
   it('should successfully render jinja2-style parameters', () => {
-    assert.deepEqual(config.renderConfig(templ, myVars), result);
+    assert.deepEqual(config.renderConfig(nj, templ, myVars), result);
   });
 });
 
