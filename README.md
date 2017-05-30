@@ -6,7 +6,6 @@ Simple package to help with Cloudformation deployments
 * Encourage multi-environment deployments
 * Promote use of 'native' Cloudformation templates (i.e., with minimal pre-processing)
 
-
 ### Installation
 Requires:
 * nodejs v7.10.0 or later
@@ -21,7 +20,7 @@ Add the github link as a npm dependency to your local repo. Snippet from package
 
 ### Usage
 ```
-node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] [ -s,--stacks <STACK NAMES> ]
+node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] [ -s,--stacks <STACK NAMES> ] [ -e, --extra-vars <EXTRA VARS> ]
 ```
 
 Run deployment against specified ENVIRONMENT. 
@@ -30,6 +29,7 @@ ACTION default to 'deploy': choices are 'deploy', 'delete', and 'validate'
 REGION specifies the desired AWS Region. Currently defaults to 'us-east-1'
 PROFILE specifies an optional name for an AWS profile to assume when running the job
 STACK NAME corresponds to the name of your Cloudformation templates
+EXTRA VARS indicate extra variables for deployment; useful for any variables that are only known at runtime; in the form "KEY=VALUE" -- additional variables should be separated by spaces
 
 ### Template Files
 Cloudformation templates must be stored under ./templates in either json or yaml format.
@@ -54,14 +54,14 @@ Example stacks.yml:
 stacks:
 - name: network
   parameters:
-  - VpcIPRange: "{{VpcIPRange}}"
-  - PrivateSubnet0: "{{PrivateSubnet0}}"
-  - PrivateSubnet1: "{{PrivateSubnet1}}"
+    VpcIPRange: "{{VpcIPRange}}"
+    PrivateSubnet0: "{{PrivateSubnet0}}"
+    PrivateSubnet1: "{{PrivateSubnet1}}"
 - name: rds
   parameters:
-  - NetworkStack: "{{environment}}-{{application}}-network"
-  - PrivateSubnet0: "{{PrivateSubnet0}}"
-  - PrivateSubnet1: "{{PrivateSubnet1}}"
+    NetworkStack: "{{environment}}-{{application}}-network"
+    PrivateSubnet0: "{{PrivateSubnet0}}"
+    PrivateSubnet1: "{{PrivateSubnet1}}"
 ```
 
 Example env.yml:
@@ -86,7 +86,5 @@ accounts:
 * Print progress of deployments
 * Use change sets
 * Make it easy to set stack update policies
-* Delete files from s3 after deployments?
-* Add more unit tests
-* Fix bugs
+* Optionally delete templates from s3 after deployment
 * Add example project
