@@ -28,7 +28,6 @@ class CfStack {
   async load(nj, envVars, stackOutputs) {
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir, 
       this.rawStackVars.name)
-      .then(f => this.template = f);
     this.renderedStackVars = await config.loadStackConfig(nj, 
         this.rawStackVars, _.assign(envVars, stackOutputs), this.schema);
     this.infraBucket = envVars.infraBucket;
@@ -65,8 +64,30 @@ class CfStack {
     }
   }
 
+  // FIXME:  sigh...
+  async getDependencyOutputs(nj, envVars, stackOutputs) {
+    if (typeof this.rawStackVars.deps === 'undefined') {
+      return stackOutputs;
+    }
+    this.deps = await config.renderConfig(nj, this.rawStackVars.deps, envVars)
+    Promise.all(this.deps, async (it) => {
+      const resp = await awsDescribeCfStack(it);
+      const outputs = unwrapOutputs(resp.Outputs);
+      console.log('OUTPUTS: ', outputs);
+      stackOutputs.stacks[_.chain(it).split('-').last().value()] = {};
+      stackOutputs.stacks[_.chain(it).split('-').last().value()]['outputs'] = outputs;
+      return stackOutputs
+    })
+    .then(() => stackOutputs)
+  }
+
   async deploy(nj, envVars, stackOutputs) {
+    stackOutputs = await this.getDependencyOutputs(nj, envVars, stackOutputs);
+    console.log('THIS: ', stackOutputs)
     await this.load(nj, envVars, stackOutputs);
+    if (!(await awsCfStackExists(this.deployName))) {
+      await this.execTasks(this.creationTasks);
+    }
     await this.execTasks(this.preTasks);
     await ensureBucket(this.infraBucket);
     const s3Resp = await this.uploadTemplate()
@@ -78,10 +99,9 @@ class CfStack {
       Capabilities: [ 'CAPABILITY_IAM', 
         'CAPABILITY_NAMED_IAM' ]
     });
-    this.outputs = _.chain(stackResp.Outputs)
-      .keyBy('OutputKey')
-      .mapValues('OutputValue')
-      .value();
+    
+    this.outputs = unwrapOutputs(stackResp.Outputs);
+
     await this.execTasks(this.postTasks);
     console.log(`deployed ${this.deployName}`);
     return this;
@@ -93,6 +113,13 @@ class CfStack {
     });
     console.log(`deleted ${this.deployName}`);
   }
+}
+
+function unwrapOutputs(outputs) {
+  return _.chain(outputs)
+    .keyBy('OutputKey')
+    .mapValues('OutputValue')
+    .value();
 }
 
 // look for template having multiple possible file extensions
@@ -203,6 +230,14 @@ async function updateAwsCfStack(params) {
   }
 }
 
+async function awsDescribeCfStack(stackName) {
+  const cli = new AWS.CloudFormation();
+  const outputs = await cli.describeStacks({
+    StackName: stackName
+  }).promise()
+  return outputs.Stacks[0];
+}
+
 // update / create and return its info:
 async function ensureAwsCfStack(params) {
   const cli = new AWS.CloudFormation();
@@ -211,10 +246,8 @@ async function ensureAwsCfStack(params) {
   } else {
     await createAwsCfStack(params)
   }
-  const outputs = await cli.describeStacks({
-    StackName: params.StackName
-  }).promise()
-  return outputs.Stacks[0];
+  const output = await awsDescribeCfStack(params.StackName);
+  return output;
 }
 
 async function deleteAwsCfStack(params) {

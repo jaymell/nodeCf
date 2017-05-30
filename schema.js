@@ -32,6 +32,12 @@ const cfStackConfigSchema = {
         type: "string"
       }
     },
+    creationTasks: {
+      type: "array",
+      items: {
+        type: "string"
+      } 
+    },
     preTasks: { 
       type: "array",
       items: {
