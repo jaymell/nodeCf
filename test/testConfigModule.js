@@ -15,9 +15,7 @@ describe('filterStacks', function() {
   ];
 
   it('should throw if stackFilters contains a non-existent stack name', function() {
-    assert.throws(() => config.filterStacks(mockStacks, ['test1', 'test2', 'test3', 'test4'])
-
-    );
+    assert.throws(() => config.filterStacks(mockStacks, ['test1', 'test2', 'test3', 'test4']));
   });
 
   it('should return stack specified', function() {

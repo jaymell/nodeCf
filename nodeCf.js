@@ -7,6 +7,7 @@ const schema = require('./schema.js');
 const util = require('./util.js');
 var AWS = require('aws-sdk');;
 AWS.config.setPromisesDependency(Promise);
+const child_process = Promise.promisifyAll(require('child_process'));
 
 var wrapWith = (wk, wv, obj) => 
   _.toPairs(obj).map((it) => 
@@ -34,6 +35,8 @@ class CfStack {
     this.parameters = wrapWith("ParameterKey", "ParameterValue", 
       this.renderedStackVars.parameters);
     this.tags = wrapWith("Key", "Value", this.renderedStackVars.tags);
+    this.preTasks = this.renderedStackVars.preTasks;
+    this.postTasks = this.renderedStackVars.postTasks;
     this.deployName = `${envVars.environment}-${envVars.application}-${this.name}`;
   }
 
@@ -55,8 +58,17 @@ class CfStack {
     console.log(`${this.name} is a valid Cloudformation template`);
   }
 
+  async execTasks(tasks) {
+    if ( typeof tasks !== 'undefined' ){
+      const output = await Promise.each(tasks, async(task) => 
+        child_process.execAsync(task));
+      console.log(output);
+    }
+  }
+
   async deploy(nj, envVars, stackOutputs) {
     await this.load(nj, envVars, stackOutputs);
+    await this.execTasks(this.preTasks);
     await ensureBucket(this.infraBucket);
     const s3Resp = await this.uploadTemplate()
     const stackResp = await ensureAwsCfStack({
@@ -71,6 +83,7 @@ class CfStack {
       .keyBy('OutputKey')
       .mapValues('OutputValue')
       .value();
+    await this.execTasks(this.postTasks);
     console.log(`deployed ${this.deployName}`);
     return this;
   }

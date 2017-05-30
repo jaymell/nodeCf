@@ -9,7 +9,7 @@ var getTemplateFile = nodeCf.__get__('getTemplateFile');
 
 describe('getTemplateFile', function() {
   before(function() { 
-  	sinon.stub(util, 'fileExists', function(f) { 
+  	sinon.stub(util, 'fileExists').callsFake(function(f) { 
   	  if (f.endsWith('json')) return f
   	  else throw new Error();
   	});
@@ -28,7 +28,7 @@ describe('getTemplateFile', function() {
 
 describe('getTemplateFile', function() {
   before(function() { 
-    sinon.stub(util, 'fileExists', function(f) { 
+    sinon.stub(util, 'fileExists').callsFake(function(f) { 
       if (f.endsWith('yml')) return f
       else throw new Error();
     });
@@ -47,7 +47,7 @@ describe('getTemplateFile', function() {
 
 describe('getTemplateFile', function() {
   before(function() { 
-    sinon.stub(util, 'fileExists', function(f) { 
+    sinon.stub(util, 'fileExists').callsFake(function(f) { 
       if (f.endsWith('yaml')) return f
       else throw new Error();
     });
@@ -62,4 +62,3 @@ describe('getTemplateFile', function() {
   	util.fileExists.restore();
   });
 });
-
