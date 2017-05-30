@@ -109,8 +109,12 @@ async function main() {
     if (stackVars.length == 0) {
       throw new Error('invalid stack argument');
     }
+    // add default tags:
+    _.forEach(stackVars, stack => {
+      stack.tags = _.assign(nodeCfCfg.defaultTags, stack.tags)
+    });
     // validate stackVars:
-    _.forEach(stackVars, function(v, k) {
+    _.forEach(stackVars, (v, k) => {
       if (!config.isValidJsonSchema(schema.cfStackConfigSchema, v)) 
         throw new Error('Stack config file is invalid!');
     });

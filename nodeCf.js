@@ -62,7 +62,6 @@ class CfStack {
     if ( typeof tasks !== 'undefined' ){
       const output = await Promise.each(tasks, async(task) => 
         child_process.execAsync(task));
-      console.log(output);
     }
   }
 

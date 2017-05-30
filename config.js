@@ -26,6 +26,7 @@ function loadNodeCfConfig(args) {
   const s3LambdaDir = cfg.s3LambdaDir || `/${args.environment}/lambda`;
   const globalCfg = cfg.globalCfg || `${localCfgDir}/global.yml`;
   const stackCfg = cfg.stackCfg || `${localCfgDir}/stacks.yml`;
+  const defaultTags = cfg.defaultTags || { environment: args.environment, application: "{{application}}" };
 
   return {
     localCfTemplateDir: localCfTemplateDir,
@@ -34,7 +35,8 @@ function loadNodeCfConfig(args) {
     globalCfg: globalCfg,
     stackCfg: stackCfg,
     s3CfTemplateDir: s3CfTemplateDir,
-    s3LambdaDir: s3LambdaDir
+    s3LambdaDir: s3LambdaDir,
+    defaultTags: defaultTags
   }
 }
 
