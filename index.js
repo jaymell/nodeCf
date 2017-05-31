@@ -5,6 +5,7 @@ const fs = require('fs');
 const yaml = require('js-yaml'); 
 const _ = require('lodash');
 const config = require('./config.js');
+const templater = require('./templater.js');
 const path = require('path');
 const schema = require('./schema.js');
 const nodeCf = require('./nodeCf.js');
@@ -110,10 +111,12 @@ async function main() {
     if (stackVars.length == 0) {
       throw new Error('invalid stack argument');
     }
+
     // add default tags:
     _.forEach(stackVars, stack => {
       stack.tags = _.assign(nodeCfCfg.defaultTags, stack.tags)
     });
+
     // validate stackVars:
     _.forEach(stackVars, (v, k) => {
       if (!config.isValidJsonSchema(schema.cfStackConfigSchema, v)) 
@@ -125,7 +128,8 @@ async function main() {
   }
 
   try {
-    // FIXME: this is stupid
+    // FIXME: this is stupid but currently 
+    // necessary to assist with testing
     nodeCf.configAws({
       profile: args.profile,
       region: envVars.region
@@ -137,8 +141,7 @@ async function main() {
 
   var stacks;
   try {
-    stacks = _.map(stackVars, v => 
-      new nodeCf.CfStack(v, nodeCfCfg));
+    stacks = _.map(stackVars, v => new nodeCf.CfStack(v, nodeCfCfg));
   } catch (e) {
     console.log(`Failed to instantiate stack objects: ${e.message}`);
     process.exit(1);

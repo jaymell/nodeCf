@@ -1,9 +1,11 @@
 var assert = require('assert');
-var rewire = require("rewire");
+const rewire = require("rewire");
 const config = require('../config.js');
-var nodeCf = rewire('../nodeCf.js');
-var Promise = require('bluebird');
-var AWS = require('aws-sdk-mock');
+const templater = require('../templater.js');
+const nodeCf = rewire('../nodeCf.js');
+const Promise = require('bluebird');
+
+const AWS = require('aws-sdk-mock');
 AWS.Promise = Promise.Promise;
 
 var bucketExists = nodeCf.__get__('bucketExists');
@@ -105,7 +107,7 @@ describe('CfStack', function() {
   const nodeCfCfg = config.loadNodeCfConfig({
     environment: 'testEnv'
   });
-  const nj = config.loadNjEnv();
+  const nj = templater.loadNjEnv();
   it('load method should succeed', () => {
     const stack = new nodeCf.CfStack(stackVars, nodeCfCfg);
     return stack.load(nj, envVars, {});

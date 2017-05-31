@@ -1,8 +1,8 @@
 const Promise = require('bluebird');
 const _ = require('lodash');
 const yaml = require('js-yaml'); 
-const nunjucks = Promise.promisifyAll(require("nunjucks"));
 const Ajv = require('ajv');
+const templater = require('./templater.js');
 
 function loadNodeCfConfig(args) {
 
@@ -40,27 +40,6 @@ function loadNodeCfConfig(args) {
   }
 }
 
-// filters should be object literal 
-// containing functions
-function loadNjEnv(filters) {
-  const env = new nunjucks.Environment();
-  if ( typeof filters !== 'undefined') {
-    _.forEach(filters, it => {
-      env.addFilter(it.name, it)});
-  }
-  return env;
-}
-
-// add async filters to nunjucks environment;
-// filters should be object literal containing
-// functions:
-function loadNjAsync(env, filters) {
-  if ( typeof filters !== 'undefined') {
-    _.forEach(filters, it => {
-      env.addFilter(it.name, it, true)});
-  }
-  return env;
-}
 
 // given a string of one or more key-value pairs
 // separated by '=', convert and return object
@@ -129,39 +108,15 @@ function filterStacks(stacks, stackFilters) {
   return _.filter(stacks.stacks, stack => stackFilters.includes(stack.name))
 }
 
-// allows for referencing other variables within the config;
-// recurse until there aren't any more values to be rendered:
-async function renderConfig(nj, myVars, templateVars) {
-  if (typeof templateVars === 'undefined') {
-    // use variables as inputs
-    // for their own rendering
-    templateVars = JSON.parse(JSON.stringify(myVars));
-  }
-  var myVars = await nj.renderStringAsync(JSON.stringify(myVars), templateVars);
-  myVars = JSON.parse(myVars);
-  _.forOwn(myVars, async function(v, k) {
-    if (typeof v === "string" && v.includes('{{') && v.includes('}}'))
-      myVars = await renderConfig(nj, myVars, templateVars);
-  });
-  return myVars;
-}
+
 
 // render and validate config
 async function loadEnvConfig(nj, envVars, schema) {
-  envVars = await renderConfig(nj, envVars);
+  envVars = await templater.render(nj, envVars);
   if (!(isValidJsonSchema(schema, envVars))) {
     throw new Error('Environment config failed schema validation');
   }
   return envVars;
-}
-
-// render and validate config
-async function loadStackConfig(nj, stackVars, envVars, schema) {
-  stackVars = await renderConfig(nj, stackVars, envVars);
-  if (!(isValidJsonSchema(schema, stackVars))) {
-    throw new Error('Stack config failed schema validation');
-  }
-  return stackVars;
 }
 
 function isValidJsonSchema(schema, spec) {
@@ -179,9 +134,5 @@ module.exports = {
   filterStacks: filterStacks,
   loadEnvConfig: loadEnvConfig,
   loadNodeCfConfig: loadNodeCfConfig,
-  loadNjEnv: loadNjEnv,
-  loadNjAsync: loadNjAsync,
-  loadStackConfig: loadStackConfig,
-  isValidJsonSchema: isValidJsonSchema,
-  renderConfig: renderConfig
+  isValidJsonSchema: isValidJsonSchema
 }

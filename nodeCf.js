@@ -5,9 +5,10 @@ const path = require("path");
 const config = require('./config.js');
 const schema = require('./schema.js');
 const util = require('./util.js');
-var AWS = require('aws-sdk');;
-AWS.config.setPromisesDependency(Promise);
+const templater = require('./templater.js');
 const child_process = Promise.promisifyAll(require('child_process'));
+const AWS = require('aws-sdk');;
+AWS.config.setPromisesDependency(Promise);
 
 var wrapWith = (wk, wv, obj) => 
   _.toPairs(obj).map((it) => 
@@ -26,16 +27,11 @@ class CfStack {
   // variables needed by previously deployed stacks
   // can be used
   async load(nj, envVars, stackOutputs) {
-    this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir, 
-      this.rawStackVars.name)
-    this.renderedStackVars = await config.loadStackConfig(nj, 
-        this.rawStackVars, _.assign(envVars, stackOutputs), this.schema);
-    this.infraBucket = envVars.infraBucket;
     this.parameters = wrapWith("ParameterKey", "ParameterValue", 
-      this.renderedStackVars.parameters);
-    this.tags = wrapWith("Key", "Value", this.renderedStackVars.tags);
-    this.preTasks = this.renderedStackVars.preTasks;
-    this.postTasks = this.renderedStackVars.postTasks;
+      this.stackVars.parameters);
+    this.tags = wrapWith("Key", "Value", this.stackVars.tags);
+    this.preTasks = this.stackVars.preTasks;
+    this.postTasks = this.stackVars.postTasks;
     this.deployName = `${envVars.environment}-${envVars.application}-${this.name}`;
   }
 
@@ -47,15 +43,6 @@ class CfStack {
     return await s3Upload(this.infraBucket, this.template, this.s3Location);
   }
 
-  async validate(nj, envVars) {
-    await this.load(nj, envVars);
-    await ensureBucket(this.infraBucket);
-    const s3Resp = await this.uploadTemplate()
-    await validateAwsCfStack({
-      TemplateURL: s3Resp.Location,
-    });
-    console.log(`${this.name} is a valid Cloudformation template`);
-  }
 
   async execTasks(tasks) {
     if ( typeof tasks !== 'undefined' ){
@@ -65,23 +52,63 @@ class CfStack {
   }
 
   // FIXME:  sigh...
-  async getDependencyOutputs(nj, envVars, stackOutputs) {
-    if (typeof this.rawStackVars.deps === 'undefined') {
-      return stackOutputs;
-    }
-    this.deps = await config.renderConfig(nj, this.rawStackVars.deps, envVars)
-    Promise.all(this.deps, async (it) => {
-      const resp = await awsDescribeCfStack(it);
-      const outputs = unwrapOutputs(resp.Outputs);
-      console.log('OUTPUTS: ', outputs);
-      stackOutputs.stacks[_.chain(it).split('-').last().value()] = {};
-      stackOutputs.stacks[_.chain(it).split('-').last().value()]['outputs'] = outputs;
-      return stackOutputs
-    })
-    .then(() => stackOutputs)
+  // async getDependencyOutputs(nj, envVars, stackOutputs) {
+  //   if (typeof this.rawStackVars.deps === 'undefined') {
+  //     return stackOutputs;
+  //   }
+  //   this.deps = await templater.render(nj, this.rawStackVars.deps, envVars)
+  //   Promise.all(this.deps, async (it) => {
+  //     const resp = await awsDescribeCfStack(it);
+  //     const outputs = unwrapOutputs(resp.Outputs);
+  //     console.log('OUTPUTS: ', outputs);
+  //     stackOutputs.stacks[_.chain(it).split('-').last().value()] = {};
+  //     stackOutputs.stacks[_.chain(it).split('-').last().value()]['outputs'] = outputs;
+  //     return stackOutputs
+  //   })
+  //   .then(() => stackOutputs)
+  // }
+
+  async validate(nj, envVars) {
+    this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir, 
+      this.rawStackVars.name);
+    this.infraBucket = envVars.infraBucket;
+    await ensureBucket(this.infraBucket);
+    const s3Resp = await this.uploadTemplate()
+    await validateAwsCfStack({
+      TemplateURL: s3Resp.Location,
+    });
+    console.log(`${this.name} is a valid Cloudformation template`);
   }
 
   async deploy(nj, envVars, stackOutputs) {
+    // merge these two to form initial set of template variables:
+    const templateVars = _.assign(envVars, stackOutputs
+    this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir,
+      this.name);
+    this.infraBucket = envVars.infraBucket;
+
+    this.stackDependencies = await templater.render(nj, 
+      this.rawStackVars.stackDependencies, 
+      templateVars);
+
+    // run stack dependencies and add them to outputs
+
+    // render pre-tasks
+
+    // run pre-tasks 
+
+    // render and prep parameters and tags
+
+    // deploy stack 
+
+    // update stack outputs
+
+    // render post-tasks
+
+    // run post-tasks
+
+    this.stackVars = await templater.render(nj, this.rawStackVars, _.assign(envVars, stackOutputs);
+
     stackOutputs = await this.getDependencyOutputs(nj, envVars, stackOutputs);
     console.log('THIS: ', stackOutputs)
     await this.load(nj, envVars, stackOutputs);

@@ -26,7 +26,7 @@ const cfStackConfigSchema = {
       },
       additionalProperties: false
     },
-    deps: {
+    stackDependencies: {
       type: "array",
       items: {
         type: "string"
