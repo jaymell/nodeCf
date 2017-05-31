@@ -43,10 +43,10 @@ Required config files:
 * ./config/stacks.yml -- specifies the variables that get passed to Cloudformation as parameters
 
 Required variables:
-* account
-* environmeent
-* application
-* infraBucket
+* account -- your AWS account number
+* environment -- the name of the environment -- e.g., 'dev', 'qa', 'production'
+* application -- this can be anything, but the name of your repository is a good default; it is used for naming and uniquely identifying resources
+* infraBucket -- Cloudformation stacks over a certain size must first be uploaded to s3; as a result, nodeCf requires the name of a bucket to use for deployments; the scripts will handle creating it for you
 
 Example stacks.yml:
 ```
