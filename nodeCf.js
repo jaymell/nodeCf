@@ -98,7 +98,8 @@ class CfStack {
 // look for template having multiple possible file extensions
 async function getTemplateFile(templateDir, stackName) {
   const f = await Promise.any(_.map(['yml', 'json', 'yaml'], async(ext) => 
-    await util.fileExists(`${path.join(templateDir, stackName)}.${ext}`)));
+    await util.fileExists(`${path.join(templateDir, stackName)}.${ext}`)
+    ));
   if (f) return f;
   else throw new Error(`Stack template "${stackName}" not found!`); 
 }

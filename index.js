@@ -45,12 +45,13 @@ async function main() {
   // instantiate nunjucks renderer
   try {
     // imported relative to current directory:
-    var filters = await util.fileExists(path.join(process.cwd(), nodeCfCfg.filters));
-    if ( filters ) {
-      filters = require(filters);
+    try {
+      const filtersModule = await util.fileExists(path.join(process.cwd(), nodeCfCfg.filters));
+      const filters = require(filtersModule);
       nj = config.loadNjEnv(filters.sync || filters);
       nj = config.loadNjAsync(nj, filters.async);
-    } else {
+    } catch (e) {
+
       nj = config.loadNjEnv();
     }
   } catch (e) {

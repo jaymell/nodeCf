@@ -7,8 +7,7 @@ async function fileExists(f) {
     await fs.statAsync(f);
     return f;
   } catch (e) {
-    if (e.code !== 'ENOENT') throw e;
-    return false;
+    throw e;
   }
 }
 
