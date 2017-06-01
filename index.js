@@ -49,11 +49,9 @@ async function main() {
     try {
       const filtersModule = await util.fileExists(path.join(process.cwd(), nodeCfCfg.filters));
       const filters = require(filtersModule);
-      nj = config.loadNjEnv(filters.sync || filters);
-      nj = config.loadNjAsync(nj, filters.async);
+      nj = templater.loadNjEnv(filters.sync || filters, filters.async);
     } catch (e) {
-
-      nj = config.loadNjEnv();
+      nj = templater.loadNjEnv();
     }
   } catch (e) {
     console.log('Failed to load Nunjucks environment: ', e);

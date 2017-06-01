@@ -4,12 +4,8 @@ const nunjucks = Promise.promisifyAll(require("nunjucks"));
 
 function loadNjEnv(syncFilters, asyncFilters) {
   const env = new nunjucks.Environment();
-  _.chain(syncFilters)
-    .remove(_.isUndefined)
-    .forEach(it => env.addFilter(it.name, it));
-  _.chain(asyncFilters)
-    .remove(_.isUndefined)
-    .forEach(it => env.addFilter(it.name, it, true))
+  _.forEach(syncFilters, it => env.addFilter(it.name, it));
+  _.forEach(asyncFilters, it => env.addFilter(it.name, it, true));
   return env;
 }
 
