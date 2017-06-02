@@ -107,11 +107,6 @@ describe('CfStack', function() {
   const nodeCfCfg = config.loadNodeCfConfig({
     environment: 'testEnv'
   });
-  const nj = templater.loadNjEnv();
-  it('load method should succeed', () => {
-    const stack = new nodeCf.CfStack(stackVars, nodeCfCfg);
-    return stack.load(nj, envVars, {});
-  });
   it('execTasks should successfully execute working tasks', () => {
     const stack = new nodeCf.CfStack(stackVars, nodeCfCfg);
     return stack.execTasks(["ls", "echo"])

@@ -12,6 +12,7 @@ function loadNjEnv(syncFilters, asyncFilters) {
 // allows for referencing other variables within the config;
 // recurse until there aren't any more values to be rendered:
 async function render(nj, myVars, templateVars) {
+  console.log('templateVars: ', templateVars)
   if (typeof templateVars === 'undefined') {
     // use variables as inputs
     // for their own rendering

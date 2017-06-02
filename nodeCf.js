@@ -51,23 +51,6 @@ class CfStack {
     }
   }
 
-  // // FIXME:  sigh...
-  // async getDependencyOutputs(nj, envVars, stackOutputs) {
-  //   if (typeof this.rawStackVars.deps === 'undefined') {
-  //     return stackOutputs;
-  //   }
-  //   this.stackDependencies = await templater.render(nj, this.rawStackVars.deps, envVars)
-  //   Promise.all(this.deps, async (it) => {
-  //     const resp = await awsDescribeCfStack(it);
-  //     const outputs = unwrapOutputs(resp.Outputs);
-  //     console.log('OUTPUTS: ', outputs);
-  //     stackOutputs.stacks[_.chain(it).split('-').last().value()] = {};
-  //     stackOutputs.stacks[_.chain(it).split('-').last().value()]['outputs'] = outputs;
-  //     return stackOutputs
-  //   })
-  //   .then(() => stackOutputs)
-  // }
-
   async validate(nj, envVars) {
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir, 
       this.rawStackVars.name);
@@ -82,31 +65,45 @@ class CfStack {
 
   async deploy(nj, envVars, stackOutputs) {
     // merge these two to form initial set of template variables:
-    const templateVars = _.assign(envVars, stackOutputs)
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir,
       this.name);
     this.infraBucket = envVars.infraBucket;
 
     // render stack dependencies
-    this.stackDependencies = await Promise.all(_.without(this.rawStackVars.stackDependencies, _.isUndefined), 
-      async(it) => await templater.render(nj, it, templateVars));
+    this.stackDependencies = await Promise.map(
+      _.without(this.rawStackVars.stackDependencies, _.isUndefined),
+      async(it) => { 
+        const stuff = await templater.render(nj, it, _.assign(envVars, stackOutputs));
+        return stuff; });
 
     // run stack dependencies and add them to outputs
-    // *** UPDATE OUTPUTS *** 
-    const stackDeps = await Promise.all(this.stackDependencies,
+    const stackDeps1 = await Promise.map(this.stackDependencies,
       async(it) => await awsDescribeCfStack(it))
+
+    const stackDeps2 = _.chain(stackDeps1)
+      .forEach(it => { 
+        it.outputs = unwrapOutputs(it.Outputs); 
+        it.stackAbbrev = _.last(_.split(it.StackName, '-'))
+      })
+      .map(it => _.pick(it, ['stackAbbrev', 'outputs']))
+      .keyBy('stackAbbrev')
+      .value()
+
+    stackOutputs.stacks = _.chain(stackOutputs.stacks)
+      .cloneDeep()
+      .assign(stackDeps2).value()
 
     // render stack creation stacks
     if (!(await awsCfStackExists(this.deployName))) {
       this.creationTasks = await templater.render(nj, 
         this.rawStackVars.creationTasks, 
-        templateVars);
+        _.assign(envVars, stackOutputs));
       await this.execTasks(this.creationTasks);
     }
 
     // render pre-tasks
-    this.preTasks = await Promise.all(_.without(this.rawStackVars.preTasks, _.isUndefined), 
-      async(it) => templater.render(nj, it, templateVars));
+    this.preTasks = await Promise.map(_.without(this.rawStackVars.preTasks, _.isUndefined), 
+      async(it) => templater.render(nj, it, _.assign(envVars, stackOutputs)));
 
     // run pre-tasks 
     await this.execTasks(this.preTasks);
@@ -114,10 +111,10 @@ class CfStack {
     // render and wrap parameters and tags
     this.parameters = wrapWith("ParameterKey", "ParameterValue", await templater.render(nj, 
       this.rawStackVars.parameters, 
-      templateVars));
+      _.assign(envVars, stackOutputs)));
     this.tags = wrapWith("Key", "Value", await templater.render(nj, 
       this.rawStackVars.tags, 
-      templateVars));
+      _.assign(envVars, stackOutputs)));
 
     // deploy stack 
     this.deployName = `${envVars.environment}-${envVars.application}-${this.name}`;
@@ -133,16 +130,16 @@ class CfStack {
     });
     
     // update stack outputs
+    this.outputs = unwrapOutputs(stackResp.Outputs);
+    stackOutputs.stacks[this.name] = {};
+    stackOutputs.stacks[this.name]['outputs'] = this.outputs;
 
     // render post-tasks
-    // *** ADD OUTPUTS
-    this.postTasks = await Promise.all(_.without(this.rawStackVars.postTasks, _.isUndefined, 
-      async(it) => templater.render(nj, it, templateVars)));
+    this.postTasks = await Promise.map(_.without(this.rawStackVars.postTasks, _.isUndefined), 
+      async(it) => templater.render(nj, it, _.assign(envVars, stackOutputs)));
 
     // run post-tasks
     await this.execTasks(this.postTasks);
-
-    this.outputs = unwrapOutputs(stackResp.Outputs);
 
     console.log(`deployed ${this.deployName}`);
 
