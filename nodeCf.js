@@ -44,8 +44,9 @@ class CfStack {
   }
 
 
-  async execTasks(tasks) {
+  async execTasks(tasks, taskType) {
     if ( typeof tasks !== 'undefined' ){
+      if (taskType) console.log(`running ${taskType}... `)
       const output = await Promise.each(tasks, async(task) => 
         child_process.execAsync(task));
     }
@@ -64,7 +65,8 @@ class CfStack {
   }
 
   async deploy(nj, envVars, stackOutputs) {
-    // merge these two to form initial set of template variables:
+    this.deployName = `${envVars.environment}-${envVars.application}-${this.name}`;
+    console.log(`deploying ${this.deployName}`);
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir,
       this.name);
     this.infraBucket = envVars.infraBucket;
@@ -77,10 +79,8 @@ class CfStack {
         return stuff; });
 
     // run stack dependencies and add them to outputs
-    const stackDeps1 = await Promise.map(this.stackDependencies,
-      async(it) => await awsDescribeCfStack(it))
-
-    const stackDeps2 = _.chain(stackDeps1)
+    const depResp = _.chain(await Promise.map(this.stackDependencies,
+      async(it) => await awsDescribeCfStack(it)))
       .forEach(it => { 
         it.outputs = unwrapOutputs(it.Outputs); 
         it.stackAbbrev = _.last(_.split(it.StackName, '-'))
@@ -91,14 +91,14 @@ class CfStack {
 
     stackOutputs.stacks = _.chain(stackOutputs.stacks)
       .cloneDeep()
-      .assign(stackDeps2).value()
+      .assign(depResp).value()
 
-    // render stack creation stacks
+    // render and run stack creation stacks
     if (!(await awsCfStackExists(this.deployName))) {
       this.creationTasks = await templater.render(nj, 
         this.rawStackVars.creationTasks, 
         _.assign(envVars, stackOutputs));
-      await this.execTasks(this.creationTasks);
+      await this.execTasks(this.creationTasks, 'creation tasks');
     }
 
     // render pre-tasks
@@ -106,7 +106,7 @@ class CfStack {
       async(it) => templater.render(nj, it, _.assign(envVars, stackOutputs)));
 
     // run pre-tasks 
-    await this.execTasks(this.preTasks);
+    await this.execTasks(this.preTasks, 'pre-tasks');
 
     // render and wrap parameters and tags
     this.parameters = wrapWith("ParameterKey", "ParameterValue", await templater.render(nj, 
@@ -117,7 +117,6 @@ class CfStack {
       _.assign(envVars, stackOutputs)));
 
     // deploy stack 
-    this.deployName = `${envVars.environment}-${envVars.application}-${this.name}`;
     await ensureBucket(this.infraBucket);
     const s3Resp = await this.uploadTemplate()
     const stackResp = await ensureAwsCfStack({
@@ -139,7 +138,7 @@ class CfStack {
       async(it) => templater.render(nj, it, _.assign(envVars, stackOutputs)));
 
     // run post-tasks
-    await this.execTasks(this.postTasks);
+    await this.execTasks(this.postTasks, 'post-tasks');
 
     console.log(`deployed ${this.deployName}`);
 
