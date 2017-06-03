@@ -8,8 +8,8 @@ const Promise = require('bluebird');
 var getTemplateFile = nodeCf.__get__('getTemplateFile');
 
 describe('getTemplateFile', function() {
-  before(function() { 
-  	sinon.stub(util, 'fileExists').callsFake(function(f) { 
+  before(function() {
+  	sinon.stub(util, 'fileExists').callsFake(function(f) {
       console.log('f: ', f)
   	  if (f.endsWith('json')) return f
   	  throw new Error;
@@ -21,15 +21,15 @@ describe('getTemplateFile', function() {
       .then(d => assert.equal(d, '/tmp/test.json'))
   });
 
-  after(function() { 
+  after(function() {
   	util.fileExists.restore();
   });
 });
 
 
 describe('getTemplateFile', function() {
-  before(function() { 
-    sinon.stub(util, 'fileExists').callsFake(function(f) { 
+  before(function() {
+    sinon.stub(util, 'fileExists').callsFake(function(f) {
       if (f.endsWith('yml')) return f
       throw new Error;
     });
@@ -40,15 +40,15 @@ describe('getTemplateFile', function() {
       .then(d => assert.equal(d, '/tmp/test.yml'))
   });
 
-  after(function() { 
+  after(function() {
   	util.fileExists.restore();
   });
 });
 
 
 describe('getTemplateFile', function() {
-  before(function() { 
-    sinon.stub(util, 'fileExists').callsFake(function(f) { 
+  before(function() {
+    sinon.stub(util, 'fileExists').callsFake(function(f) {
       if (f.endsWith('yaml')) return f
       throw new Error;
     });
@@ -59,7 +59,7 @@ describe('getTemplateFile', function() {
       .then(d => assert.equal(d, '/tmp/test.yaml'))
   });
 
-  after(function() { 
+  after(function() {
   	util.fileExists.restore();
   });
 });

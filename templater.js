@@ -17,7 +17,8 @@ async function render(nj, myVars, templateVars) {
     // for their own rendering
     templateVars = JSON.parse(JSON.stringify(myVars));
   }
-  var myVars = await nj.renderStringAsync(JSON.stringify(myVars), templateVars);
+  var myVars = await nj.renderStringAsync(JSON.stringify(myVars),
+    templateVars);
   myVars = JSON.parse(myVars);
   _.forOwn(myVars, async function(v, k) {
     if (typeof v === "string" && v.includes('{{') && v.includes('}}'))
@@ -29,4 +30,4 @@ async function render(nj, myVars, templateVars) {
 module.exports = {
   loadNjEnv: loadNjEnv,
   render: render
-}
+};

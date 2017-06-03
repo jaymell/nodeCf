@@ -2,7 +2,7 @@
 
 const Promise = require('bluebird');
 const fs = require('fs');
-const yaml = require('js-yaml'); 
+const yaml = require('js-yaml');
 const _ = require('lodash');
 const config = require('./config.js');
 const templater = require('./templater.js');
@@ -17,7 +17,8 @@ function usage() {
                    `[ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] ` +
                    `[-e, --extraVars <VARIABLES>] ` +
                    `[ -s,--stacks <STACK NAMES> ] ` +
-                   `\n\n\tVARIABLES should be "Key=Value" pairs; several can be passed if separated by space\n`
+                   `\n\n\tVARIABLES should be "Key=Value" pairs;
+                   several can be passed if separated by space\n`;
   console.log(usageStr);
   process.exit(-1);
 }
@@ -28,7 +29,8 @@ async function main() {
 
   try {
     args = config.parseArgs(
-      require('minimist')(process.argv.slice(2), {default: {region: 'us-east-1'}})
+      require('minimist')(process.argv.slice(2),
+        {default: {region: 'us-east-1'}})
     );
   } catch (e) {
     console.log(`Failed to parse command line arguments: ${e.message}`);
@@ -47,7 +49,8 @@ async function main() {
   try {
     // imported relative to current directory:
     try {
-      const filtersModule = await util.fileExists(path.join(process.cwd(), nodeCfCfg.filters));
+      const filtersModule = await util.fileExists(path.join(process.cwd(),
+        nodeCfCfg.filters));
       const filters = require(filtersModule);
       nj = templater.loadNjEnv(filters.sync || filters, filters.async);
     } catch (e) {
@@ -57,7 +60,7 @@ async function main() {
     console.log('Failed to load Nunjucks environment: ', e);
     process.exit(1);
   }
-  
+
   // FIXME: global should probably just be optional
   try {
     globalVars = yaml.safeLoad(
@@ -66,14 +69,14 @@ async function main() {
     ));
   } catch (e) {
     console.log(`Failed to load global config: ${e.message}`);
-    process.exit(1);  
+    process.exit(1);
   }
 
   try {
     envVars = yaml.safeLoad(
       fs.readFileSync(
         path.join(
-          nodeCfCfg.localCfgDir, 
+          nodeCfCfg.localCfgDir,
          `${args.environment}.yml`
     )));
 
@@ -86,14 +89,14 @@ async function main() {
   try {
     // concatenate variables, with env-specific overriding global,
     // then render and validate:
-    envVars = await config.loadEnvConfig(nj, _.assign(globalVars, 
-        envVars, 
+    envVars = await config.loadEnvConfig(nj, _.assign(globalVars,
+        envVars,
         { environment: args.environment, region: args.region },
         args.extraVars),
       schema.envConfigSchema);
   } catch (e) {
     console.log('Invalid environment configuration: ', e);
-    process.exit(1);      
+    process.exit(1);
   }
   try {
     // only run stacks that were passed on command line
@@ -112,21 +115,21 @@ async function main() {
 
     // add default tags:
     _.forEach(stackVars, stack => {
-      stack.tags = _.assign(nodeCfCfg.defaultTags, stack.tags)
+      stack.tags = _.assign(nodeCfCfg.defaultTags, stack.tags);
     });
 
     // validate stackVars:
     _.forEach(stackVars, (v, k) => {
-      if (!config.isValidJsonSchema(schema.cfStackConfigSchema, v)) 
+      if (!config.isValidJsonSchema(schema.cfStackConfigSchema, v))
         throw new Error('Stack config file is invalid!');
     });
   } catch (e) {
     console.log(`Failed to load stack config: `, e);
-    process.exit(1);  
+    process.exit(1);
   }
 
   try {
-    // FIXME: this is stupid but currently 
+    // FIXME: this is stupid but currently
     // necessary to assist with testing
     nodeCf.configAws({
       profile: args.profile,
@@ -175,7 +178,7 @@ async function main() {
   }
 }
 
-main()
+main();
 
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);

@@ -19,7 +19,7 @@ describe('bucketExists', function() {
   it('should throw if 403 status', function() {
     // XXX: is this the best way to test a Promise rejection?
     return bucketExists('testBucket')
-      .catch(e => 
+      .catch(e =>
         assert.equal(e.message, '403: You don\'t have permissions to access this bucket'))
   });
 
@@ -57,8 +57,8 @@ describe('test parameter wrapping', function() {
     ];
 
     const input = {
-      Key1: "Value1", 
-      Key2: "Value2"  
+      Key1: "Value1",
+      Key2: "Value2"
     };
 
     const result = wrapWith('ParameterKey', 'ParameterValue', input);
@@ -86,10 +86,10 @@ describe('CfStack', function() {
   it('should instantiate successfully', () => {
     const stack = new nodeCf.CfStack(stackVars, nodeCfCfg);
   });
-}); 
+});
 
 describe('CfStack', function() {
-  before(function() { 
+  before(function() {
     nodeCf.__set__('getTemplateFile', () => Promise.resolve('./templates/test.json'));
   });
   const envVars = {
@@ -124,5 +124,15 @@ describe('CfStack', function() {
   after(function() {
     nodeCf.__set__('getTemplateFile', getTemplateFileOrig);
   })
-}); 
+});
 
+describe('unwrapOutputs', () => {
+  it('should return proper output', () => {
+    const input = [
+      {OutputKey: "Key1", OutputValue: "Value1"},
+      {OutputKey: "Key2", OutputValue: "Value2", Description: "KeyValuePair2"}
+    ];
+    const output = { Key1: "Value1", Key2: "Value2"};
+    assert.deepEqual(nodeCf.unwrapOutputs(input), output);
+  });
+});

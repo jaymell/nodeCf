@@ -25,11 +25,11 @@ node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [ -r <REGION> ] [ -p <PROFILE>
 
 Run deployment against specified ENVIRONMENT. 
 
-ACTION default to 'deploy': choices are 'deploy', 'delete', and 'validate'
-REGION specifies the desired AWS Region. Currently defaults to 'us-east-1'
-PROFILE specifies an optional name for an AWS profile to assume when running the job
-STACK NAME corresponds to the name of your Cloudformation templates
-EXTRA VARS indicate extra variables for deployment; useful for any variables that are only known at runtime; in the form "KEY=VALUE" -- additional variables should be separated by spaces
+* ACTION defaults to 'deploy': choices are 'deploy', 'delete', and 'validate'
+* REGION specifies the desired AWS Region. Currently defaults to 'us-east-1'
+* PROFILE specifies an optional name for an AWS profile to assume when running the job
+* STACK NAME corresponds to the name of your Cloudformation templates
+* EXTRA VARS indicate extra variables for deployment; useful for any variables that are only known at runtime; in the form "KEY=VALUE" -- additional variables should be separated by spaces
 
 ### Template Files
 Cloudformation templates must be stored under ./templates in either json or yaml format.
@@ -46,7 +46,7 @@ Required variables:
 * account -- your AWS account number
 * environment -- the name of the environment -- e.g., 'dev', 'qa', 'production'
 * application -- this can be anything, but the name of your repository is a good default; it is used for naming and uniquely identifying resources
-* infraBucket -- Cloudformation stacks over a certain size must first be uploaded to s3; as a result, nodeCf requires the name of a bucket to use for deployments; the scripts will handle creating it for you
+* infraBucket -- Cloudformation stacks over a certain size must first be uploaded to s3; as a result, nodeCf requires the name of a bucket to use for deployments; the scripts will handle creating it for you.
 
 Example stacks.yml:
 ```
@@ -83,7 +83,6 @@ accounts:
 ```
 
 ### TO DO
-* Print progress of deployments
 * Use change sets
 * Make it easy to set stack update policies
 * Optionally delete templates from s3 after deployment

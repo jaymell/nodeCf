@@ -1,6 +1,6 @@
 const Promise = require('bluebird');
 const _ = require('lodash');
-const yaml = require('js-yaml'); 
+const yaml = require('js-yaml');
 const Ajv = require('ajv');
 const templater = require('./templater.js');
 
@@ -12,7 +12,7 @@ function loadNodeCfConfig(args) {
     try {
       cfg = yaml.safeLoad(fs.readFileSync(args.cfg));
     } catch (e) {
-      console.log(`Unable to load nodeCf config file: ${e.message}`)
+      console.log(`Unable to load nodeCf config file: ${e.message}`);
       process.exit(1);
     }
   } else {
@@ -22,11 +22,13 @@ function loadNodeCfConfig(args) {
   const localCfTemplateDir = cfg.localCfTemplateDir || `./templates`;
   const localCfgDir =  cfg.localCfgDir || `./config`;
   const filters = cfg.filters || `${localCfgDir}/filters.js`;
-  const s3CfTemplateDir = cfg.s3CfTemplateDir || `/${args.environment}/templates`;
+  const s3CfTemplateDir = cfg.s3CfTemplateDir ||
+    `/${args.environment}/templates`;
   const s3LambdaDir = cfg.s3LambdaDir || `/${args.environment}/lambda`;
   const globalCfg = cfg.globalCfg || `${localCfgDir}/global.yml`;
   const stackCfg = cfg.stackCfg || `${localCfgDir}/stacks.yml`;
-  const defaultTags = cfg.defaultTags || { environment: args.environment, application: "{{application}}" };
+  const defaultTags = cfg.defaultTags ||
+    { environment: args.environment, application: "{{application}}" };
 
   return {
     localCfTemplateDir: localCfTemplateDir,
@@ -37,7 +39,7 @@ function loadNodeCfConfig(args) {
     s3CfTemplateDir: s3CfTemplateDir,
     s3LambdaDir: s3LambdaDir,
     defaultTags: defaultTags
-  }
+  };
 }
 
 
@@ -45,24 +47,24 @@ function loadNodeCfConfig(args) {
 // separated by '=', convert and return object
 function parseExtraVars(extraVars) {
   if (!(_.isString(extraVars))) {
-    return undefined
+    return undefined;
   }
   const myVars = _.split(extraVars, ' ').map(it => {
-    const v = _.split(it, '=')
-    if ( v.length != 2 ) 
+    const v = _.split(it, '=');
+    if ( v.length != 2 )
       throw new Error("Can't parse variable");
-    return v
+    return v;
   });
-  return _.fromPairs(myVars)
+  return _.fromPairs(myVars);
 }
 
 // validate command line arguments
 function parseArgs(argv) {
   if (process.argv.length <= 2)
     throw new Error('invalid arguments passed');
-  if ( argv['_'].length < 1 ) 
+  if ( argv['_'].length < 1 )
     throw new Error('invalid arguments passed');
-  
+
   // default action
   var action = 'deploy';
   if ( argv['_'].length >= 2 ) {
@@ -75,11 +77,11 @@ function parseArgs(argv) {
     if (typeof stacks !== 'string') {
       throw new Error('No stack name passed');
     }
-  } 
+  }
 
-  var getStackNames = stacks => 
-    ( _.isString(stacks) ? 
-      _.map(stacks.split(','), stack => stack.trim()) 
+  var getStackNames = stacks =>
+    ( _.isString(stacks) ?
+      _.map(stacks.split(','), stack => stack.trim())
       : undefined );
 
   return {
@@ -90,7 +92,7 @@ function parseArgs(argv) {
     profile: argv['p'],
     cfg: argv['c'] || argv['config'],
     stackFilters: getStackNames(argv['s'] || argv['stacks']) || undefined
-  }
+  };
 }
 
 function filterStacks(stacks, stackFilters) {
@@ -99,16 +101,14 @@ function filterStacks(stacks, stackFilters) {
   }
 
   // throw if an invalid stack name was passed:
-  const stackNames = _.map(stacks.stacks, stack => stack.name)
-  const diff = _.difference(stackFilters, stackNames)
+  const stackNames = _.map(stacks.stacks, stack => stack.name);
+  const diff = _.difference(stackFilters, stackNames);
   if ( diff.length !== 0 ) {
     throw(`Invalid stack name(s) passed: ${diff}`);
   }
 
-  return _.filter(stacks.stacks, stack => stackFilters.includes(stack.name))
+  return _.filter(stacks.stacks, stack => stackFilters.includes(stack.name));
 }
-
-
 
 // render and validate config
 async function loadEnvConfig(nj, envVars, schema) {
@@ -135,4 +135,4 @@ module.exports = {
   loadEnvConfig: loadEnvConfig,
   loadNodeCfConfig: loadNodeCfConfig,
   isValidJsonSchema: isValidJsonSchema
-}
+};
