@@ -1,6 +1,7 @@
 const Promise = require('bluebird');
 const _ = require('lodash');
 const nunjucks = Promise.promisifyAll(require("nunjucks"));
+const debug = require('debug')('templater');
 
 function loadNjEnv(syncFilters, asyncFilters) {
   const env = new nunjucks.Environment();
@@ -9,25 +10,41 @@ function loadNjEnv(syncFilters, asyncFilters) {
   return env;
 }
 
-// allows for referencing other variables within the config;
+// templ should be string;
+// allows for referencing other variables within the template;
 // recurse until there aren't any more values to be rendered:
-async function render(nj, myVars, templateVars) {
-  if (typeof templateVars === 'undefined') {
-    // use variables as inputs
-    // for their own rendering
-    templateVars = JSON.parse(JSON.stringify(myVars));
+async function render(nj, templ, templateVars) {
+  debug('templ before: ', templ);
+  // if no vars passed, use
+  // template itself as source of variables:
+  if (_.isUndefined(templateVars))
+    templateVars = JSON.parse(_.cloneDeep(templ));
+
+  templ = await nj.renderStringAsync(templ, templateVars);
+  if (templ.match(/\{\{.*\}\}/)) {
+    // recurse
+    return await render(nj, templ, templateVars);
   }
-  var myVars = await nj.renderStringAsync(JSON.stringify(myVars),
-    templateVars);
-  myVars = JSON.parse(myVars);
-  _.forOwn(myVars, async function(v, k) {
-    if (typeof v === "string" && v.includes('{{') && v.includes('}}'))
-      myVars = await render(nj, myVars, templateVars);
-  });
-  return myVars;
+  return templ;
+}
+
+// stringify, render and parse:
+async function renderObj(nj, myVars, templateVars) {
+  return JSON.parse(await render(nj, JSON.stringify(myVars), templateVars));
+}
+
+// helper function for safely rendering ( possibly
+// undefined) list of strings:
+async function renderList(nj, templList, templateVars) {
+  const renderedList = await Promise.map(
+    _.without(templList, _.isUndefined),
+    async(it) => render(nj, it, templateVars));
+  return renderedList;
 }
 
 module.exports = {
   loadNjEnv: loadNjEnv,
-  render: render
+  render: render,
+  renderList: renderList,
+  renderObj: renderObj
 };

@@ -27,6 +27,7 @@
     "assert": "^1.4.1",
     "aws-sdk-mock": "^1.7.0",
     "babel-eslint": "^6.1.2",
+    "debug": "^2.6.8",
     "eslint": "^3.19.0",
     "mocha": "^3.3.0",
     "rewire": "^2.5.2",

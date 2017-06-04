@@ -10,15 +10,14 @@ var getTemplateFile = nodeCf.__get__('getTemplateFile');
 describe('getTemplateFile', function() {
   before(function() {
   	sinon.stub(util, 'fileExists').callsFake(function(f) {
-      console.log('f: ', f)
-  	  if (f.endsWith('json')) return f
+  	  if (f.endsWith('json')) return f;
   	  throw new Error;
   	});
   });
 
   it('should return json extension', function() {
     return getTemplateFile('/tmp', 'test')
-      .then(d => assert.equal(d, '/tmp/test.json'))
+      .then(d => assert.equal(d, '/tmp/test.json'));
   });
 
   after(function() {
@@ -30,14 +29,14 @@ describe('getTemplateFile', function() {
 describe('getTemplateFile', function() {
   before(function() {
     sinon.stub(util, 'fileExists').callsFake(function(f) {
-      if (f.endsWith('yml')) return f
+      if (f.endsWith('yml')) return f;
       throw new Error;
     });
   });
 
   it('should return yml extension', function() {
     return getTemplateFile('/tmp', 'test')
-      .then(d => assert.equal(d, '/tmp/test.yml'))
+      .then(d => assert.equal(d, '/tmp/test.yml'));
   });
 
   after(function() {
@@ -49,14 +48,14 @@ describe('getTemplateFile', function() {
 describe('getTemplateFile', function() {
   before(function() {
     sinon.stub(util, 'fileExists').callsFake(function(f) {
-      if (f.endsWith('yaml')) return f
+      if (f.endsWith('yaml')) return f;
       throw new Error;
     });
   });
 
   it('should return yaml extension', function() {
     return getTemplateFile('/tmp', 'test')
-      .then(d => assert.equal(d, '/tmp/test.yaml'))
+      .then(d => assert.equal(d, '/tmp/test.yaml'));
   });
 
   after(function() {

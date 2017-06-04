@@ -79,13 +79,13 @@ describe('cfStackConfigSchema', () => {
           "tag1": "test1",
           "tag2": "test2"
         }
-      }
+      };
 
       assert.deepEqual(nodeCf.wrapWith('Key', 'Value', spec.tags), [
         {"Key": "tag1", "Value": "test1"},
         {"Key": "tag2", "Value": "test2"}
-      ])
-    })
+      ]);
+    });
   });
 
   describe('parameters', () => {
@@ -117,20 +117,23 @@ describe('cfStackConfigSchema', () => {
           }
         }));
     });
-    it('should wrap parameters with ParameterKey and ParameterValue property names', () => {
+    it('should wrap parameters with property names', () => {
       const spec = {
         name: "test",
         parameters: {
           "tag1": "test1",
           "tag2": "test2"
         }
-      }
+      };
 
-      assert.deepEqual(nodeCf.wrapWith('ParameterKey', 'ParameterValue', spec.parameters), [
+      assert.deepEqual(nodeCf.wrapWith(
+        'ParameterKey',
+        'ParameterValue',
+        spec.parameters), [
         {"ParameterKey": "tag1", "ParameterValue": "test1"},
         {"ParameterKey": "tag2", "ParameterValue": "test2"}
-      ])
-    })
+      ]);
+    });
   });
 });
 

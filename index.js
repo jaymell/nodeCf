@@ -85,7 +85,6 @@ async function main() {
     process.exit(1);
   }
 
-
   try {
     // concatenate variables, with env-specific overriding global,
     // then render and validate:
@@ -98,6 +97,7 @@ async function main() {
     console.log('Invalid environment configuration: ', e);
     process.exit(1);
   }
+
   try {
     // only run stacks that were passed on command line
     // (if none passed, all will be run):
@@ -167,7 +167,7 @@ async function main() {
       break;
     case 'delete':
       try {
-        await nodeCf.delete(stacks);
+        await nodeCf.deleteStacks(stacks, envVars);
       } catch (e) {
         console.log(`delete failed: `, e);
         process.exit(1);

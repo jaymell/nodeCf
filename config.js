@@ -3,6 +3,7 @@ const _ = require('lodash');
 const yaml = require('js-yaml');
 const Ajv = require('ajv');
 const templater = require('./templater.js');
+const debug = require('debug')('config');
 
 function loadNodeCfConfig(args) {
 
@@ -112,7 +113,9 @@ function filterStacks(stacks, stackFilters) {
 
 // render and validate config
 async function loadEnvConfig(nj, envVars, schema) {
-  envVars = await templater.render(nj, envVars);
+  debug('loadEnvConfig: envVars before render: ', envVars);
+  envVars = await templater.renderObj(nj, envVars);
+  debug('loadEnvConfig: envVars after render: ', envVars);
   if (!(isValidJsonSchema(schema, envVars))) {
     throw new Error('Environment config failed schema validation');
   }
