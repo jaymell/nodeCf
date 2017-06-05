@@ -4,9 +4,8 @@ const fs = Promise.promisifyAll(require('fs'));
 const path = require("path");
 const config = require('./config.js');
 const schema = require('./schema.js');
-const util = require('./util.js');
+const utils = require('./utils.js');
 const templater = require('./templater.js');
-const child_process = Promise.promisifyAll(require('child_process'));
 const debug = require('debug')('nodecf');
 const AWS = require('aws-sdk');;
 AWS.config.setPromisesDependency(Promise);
@@ -37,15 +36,6 @@ class CfStack {
     this.s3Location = path.join(this.nodeCfConfig.s3CfTemplateDir,
       `${this.name}-${timestamp}.yml`);
     return await s3Upload(this.infraBucket, this.template, this.s3Location);
-  }
-
-
-  async execTasks(tasks, taskType) {
-    if (!(_.isEmpty(tasks))) {
-      if (taskType) console.log(`running ${taskType}... `);
-      const output = await Promise.each(tasks, async(task) =>
-        child_process.execAsync(task));
-    }
   }
 
   async validate(nj, envVars) {
@@ -89,14 +79,16 @@ class CfStack {
       this.rawStackVars.creationTasks, envVars);
 
     if (!(await awsCfStackExists(this.deployName))) {
-      await this.execTasks(this.creationTasks, 'creation tasks');
+      await utils.execTasks(this.creationTasks, 'creationTasks');
     }
 
     // render and run pre-tasks
     this.preTasks = await templater.renderList(nj,
       this.rawStackVars.preTasks, envVars);
 
-    await this.execTasks(this.preTasks, 'pre-tasks');
+    debug('CfStack.deploy: calling preTasks');
+    await utils.execTasks(this.preTasks, 'preTasks');
+    debug('CfStack.deploy: returning from preTasks');
 
     // render and wrap parameters and tags
     this.parameters = wrapWith("ParameterKey", "ParameterValue",
@@ -123,7 +115,7 @@ class CfStack {
     this.postTasks = await templater.renderList(nj,
       this.rawStackVars.postTasks, envVars);
 
-    await this.execTasks(this.postTasks, 'post-tasks');
+    await utils.execTasks(this.postTasks, 'postTasks');
 
     console.log(`deployed ${this.deployName}`);
 
@@ -143,7 +135,7 @@ class CfStack {
 // look for template having multiple possible file extensions
 async function getTemplateFile(templateDir, stackName) {
   const f = await Promise.any(_.map(['yml', 'json', 'yaml'], async(ext) =>
-    await util.fileExists(`${path.join(templateDir, stackName)}.${ext}`)
+    await utils.fileExists(`${path.join(templateDir, stackName)}.${ext}`)
     ));
   if (f) return f;
   else throw new Error(`Stack template "${stackName}" not found!`);

@@ -1,4 +1,4 @@
-var assert = require('assert');
+const assert = require('assert');
 const rewire = require("rewire");
 const config = require('../config.js');
 const templater = require('../templater.js');
@@ -109,20 +109,6 @@ describe('CfStack', function() {
   };
   const nodeCfCfg = config.loadNodeCfConfig({
     environment: 'testEnv'
-  });
-  it('execTasks should successfully execute working tasks', () => {
-    const stack = new nodeCf.CfStack(stackVars, nodeCfCfg);
-    return stack.execTasks(["ls", "echo"]);
-  });
-  it('execTasks should throw exception for non-zero commands', () => {
-    const stack = new nodeCf.CfStack(stackVars, nodeCfCfg);
-    return stack.execTasks(["ls nonExistentFile", "nonExistentCommand"])
-      .then(() => new Error('unexpected resolve'))
-      .catch(e => {
-        if (e.message === 'unexpected resolve') {
-          throw e;
-        }
-      });
   });
   after(function() {
     nodeCf.__set__('getTemplateFile', getTemplateFileOrig);

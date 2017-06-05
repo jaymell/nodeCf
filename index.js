@@ -9,7 +9,7 @@ const templater = require('./templater.js');
 const path = require('path');
 const schema = require('./schema.js');
 const nodeCf = require('./nodeCf.js');
-const util = require('./util.js');
+const utils = require('./utils.js');
 
 function usage() {
   // FIXME: add more description here
@@ -49,7 +49,7 @@ async function main() {
   try {
     // imported relative to current directory:
     try {
-      const filtersModule = await util.fileExists(path.join(process.cwd(),
+      const filtersModule = await utils.fileExists(path.join(process.cwd(),
         nodeCfCfg.filters));
       const filters = require(filtersModule);
       nj = templater.loadNjEnv(filters.sync || filters, filters.async);

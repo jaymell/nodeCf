@@ -1,5 +1,5 @@
-var assert = require('assert');
-var config = require('../config.js');
+const assert = require('assert');
+const config = require('../config.js');
 
 describe('filterStacks', () => {
   const mockStacks = {
