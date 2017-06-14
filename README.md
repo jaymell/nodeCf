@@ -92,7 +92,12 @@ module.exports = {
 };
 ```
 
-If the functions are asyncrhonous, you must specify such by wrapping them in an `async` key in modules.exports. You can read more about filters in the [Nunjucks documentation](https://mozilla.github.io/nunjucks/templating.html#filters).
+You could then pass your variable through a filter like this:
+```
+{{ myVariable | filterName }}
+```
+
+If the filter function is asynchronous, you must indicate so by wrapping it in an `async` key in modules.exports. You can read more about filters in the [Nunjucks documentation](https://mozilla.github.io/nunjucks/templating.html#filters).
 
 ### Pre-Tasks and Post-Tasks
 If you consistently need to run an arbitrary shell script or command immediately prior to or after deploying a CF template, you can add a pre-task, which consists of an array of shell-interpreted strings. For example, you could add a script under `./scripts/` and call that in the pre- or post-tasks, e.g.:
