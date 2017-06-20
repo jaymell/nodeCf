@@ -46,3 +46,25 @@ describe('parseExtraVars', () => {
     assert.equal(config.parseExtraVars(undefined), undefined);
   });
 });
+
+describe('loadNodeCfConfig', () => {
+  it('should return what\s passed', () => {
+    const nodeCfCfg = config.loadNodeCfConfig(
+      'testEnv',
+      {localCfTemplateDir: 'someTestDir'});
+    assert.equal(nodeCfCfg.localCfTemplateDir, 'someTestDir');
+  });
+
+  it('should return proper paths under localCfgDir', () => {
+    const nodeCfCfg = config.loadNodeCfConfig(
+      'testEnv',
+      {localCfgDir: 'someTestDir'});
+    assert.equal(nodeCfCfg.globalCfg, 'someTestDir/global.yml');
+  });
+
+  it('should return defaults if nothing passed', () => {
+    const nodeCfCfg = config.loadNodeCfConfig('testEnv');
+    assert.equal(nodeCfCfg.localCfTemplateDir, './templates');
+    assert.equal(nodeCfCfg.defaultTags.environment, 'testEnv');
+  });
+});

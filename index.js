@@ -38,7 +38,17 @@ async function main() {
   }
 
   try {
-    nodeCfCfg = config.loadNodeCfConfig(args);
+    if ( typeof args.cfg !== 'undefined') {
+      try {
+        var cfg = yaml.safeLoad(fs.readFileSync(args.cfg));
+      } catch (e) {
+        console.log(`Unable to load nodeCf config file: ${e.message}`);
+        process.exit(1);
+      }
+    } else {
+      var cfg = {};
+    }
+    nodeCfCfg = config.loadNodeCfConfig(args.environment, cfg);
   }
   catch (e) {
     console.log(e.message);

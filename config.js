@@ -5,44 +5,28 @@ const Ajv = require('ajv');
 const templater = require('./templater.js');
 const debug = require('debug')('config');
 
-function loadNodeCfConfig(args) {
+function loadNodeCfConfig(environment, cfg) {
 
-  var cfg;
+  if ( typeof cfg === 'undefined') cfg = {};
 
-  if ( typeof args.cfg !== 'undefined') {
-    try {
-      cfg = yaml.safeLoad(fs.readFileSync(args.cfg));
-    } catch (e) {
-      console.log(`Unable to load nodeCf config file: ${e.message}`);
-      process.exit(1);
-    }
-  } else {
-    cfg = {};
-  }
+  const localCfgDir = cfg.localCfgDir || `./config`;
 
-  const localCfTemplateDir = cfg.localCfTemplateDir || `./templates`;
-  const localCfgDir =  cfg.localCfgDir || `./config`;
-  const filters = cfg.filters || `${localCfgDir}/filters.js`;
-  const s3CfTemplateDir = cfg.s3CfTemplateDir ||
-    `/${args.environment}/templates`;
-  const s3LambdaDir = cfg.s3LambdaDir || `/${args.environment}/lambda`;
-  const globalCfg = cfg.globalCfg || `${localCfgDir}/global.yml`;
-  const stackCfg = cfg.stackCfg || `${localCfgDir}/stacks.yml`;
-  const defaultTags = cfg.defaultTags ||
-    { environment: args.environment, application: "{{application}}" };
-
-  return {
-    localCfTemplateDir: localCfTemplateDir,
+  const defaults = {
+    localCfTemplateDir: `./templates`,
     localCfgDir: localCfgDir,
-    filters: filters,
-    globalCfg: globalCfg,
-    stackCfg: stackCfg,
-    s3CfTemplateDir: s3CfTemplateDir,
-    s3LambdaDir: s3LambdaDir,
-    defaultTags: defaultTags
+    filters: `${localCfgDir}/filters.js`,
+    s3CfTemplateDir: `/${environment}/templates`,
+    s3LambdaDir: `/${environment}/lambda`,
+    globalCfg: `${localCfgDir}/global.yml`,
+    stackCfg: `${localCfgDir}/stacks.yml`,
+    defaultTags: {
+      environment: environment,
+      application: "{{application}}"
+    }
   };
-}
 
+  return _.merge(defaults, cfg);
+}
 
 // given a string of one or more key-value pairs
 // separated by '=', convert and return object

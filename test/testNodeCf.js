@@ -82,9 +82,7 @@ describe('CfStack', function() {
     name: 'testStack',
     environment: "{{environment}}"
   };
-  const nodeCfCfg = config.loadNodeCfConfig({
-    environment: 'testEnv'
-  });
+  const nodeCfCfg = config.loadNodeCfConfig('testEnv');
   it('should instantiate successfully', () => {
     const stack = new nodeCf.CfStack(stackVars, nodeCfCfg);
   });
@@ -107,9 +105,7 @@ describe('CfStack', function() {
     environment: "{{environment}}",
     preTasks: ["ls", "echo"]
   };
-  const nodeCfCfg = config.loadNodeCfConfig({
-    environment: 'testEnv'
-  });
+  const nodeCfCfg = config.loadNodeCfConfig('testEnv');
   after(function() {
     nodeCf.__set__('getTemplateFile', getTemplateFileOrig);
   });
@@ -125,3 +121,4 @@ describe('unwrapOutputs', () => {
     assert.deepEqual(nodeCf.unwrapOutputs(input), output);
   });
 });
+
