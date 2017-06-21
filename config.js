@@ -45,8 +45,6 @@ function parseExtraVars(extraVars) {
 
 // validate command line arguments
 function parseArgs(argv) {
-  if (process.argv.length <= 2)
-    throw new Error('invalid arguments passed');
   if ( argv['_'].length < 1 )
     throw new Error('invalid arguments passed');
 
@@ -56,8 +54,11 @@ function parseArgs(argv) {
     action = argv['_'][1];
   }
 
+  if ( (!( 's' in argv)) && (!( 'stacks' in argv ))) {
+    throw new Error('No stack name passed');
+  }
   // fail out if empty '-s' or '--stacks' passed:
-  if ('s' in argv || 'stacks' in argv) {
+  else if ('s' in argv || 'stacks' in argv) {
     let stacks = argv['s'] || argv['stacks'];
     if (typeof stacks !== 'string') {
       throw new Error('No stack name passed');

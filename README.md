@@ -17,16 +17,16 @@ npm install --save 'https://github.com/jaymell/nodeCf.git#v.9.7.1'
 
 ### Usage
 ```
-node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] [ -s,--stacks <STACK NAMES> ] [ -e, --extra-vars <EXTRA VARS> ]
+node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] -s,--stacks <STACK NAMES> [ -r <REGION> ] [ -p <PROFILE> ] [ -e, --extra-vars <EXTRA VARS> ]
 ```
 
-Run deployment against specified ENVIRONMENT. 
+Run deployment against specified ENVIRONMENT.
 
 * ACTION defaults to 'deploy': choices are 'deploy', 'delete', and 'validate'
 * REGION specifies the desired AWS Region. Currently defaults to 'us-east-1'
 * PROFILE specifies an optional name for an AWS profile to assume when running the job
-* STACK NAME corresponds to the name of your Cloudformation templates
-* EXTRA VARS indicate extra variables for deployment; useful for any variables that are only known at runtime; in the form "KEY=VALUE" -- additional variables should be separated by spaces 
+* STACK NAME corresponds to the name of your Cloudformation templates, separated by commas if multiple
+* EXTRA VARS indicate extra variables for deployment; useful for any variables that are only known at runtime; in the form "KEY=VALUE" -- additional variables should be separated by spaces
 
 ### Template Files
 Cloudformation templates -- by default are stored in `./templates` in either json or yaml format (.json, .yml, or .yaml extension).
@@ -109,7 +109,7 @@ stacks:
     VpcIPRange: "{{VpcIPRange}}"
     PrivateSubnet0: "{{PrivateSubnet0}}"
     PrivateSubnet1: "{{PrivateSubnet1}}"
-  preTasks: 
+  preTasks:
   - "./scripts/preTask1.sh"
   - "./scripts/preTask2.sh"
   postTasks:

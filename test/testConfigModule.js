@@ -68,3 +68,14 @@ describe('loadNodeCfConfig', () => {
     assert.equal(nodeCfCfg.defaultTags.environment, 'testEnv');
   });
 });
+
+describe('parseArgs', () => {
+  it('should throw if no stacks passed', () => {
+    const myArgs = { _: [ 'Dev' ], region: 'us-east-1' };
+    assert.throws(() => config.parseArgs(myArgs), /No stack name passed/);
+  });
+  it('should throw if no env passed', () => {
+    const myArgs = { _: [], region: 'us-east-1' };
+    assert.throws(() => config.parseArgs(myArgs), /invalid arguments passed/);
+  });
+});

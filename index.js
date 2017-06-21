@@ -14,9 +14,10 @@ const utils = require('./utils.js');
 function usage() {
   // FIXME: add more description here
   const usageStr = `\n\tUsage: node_modules/.bin/nodeCf <ENVIRONMENT> ` +
-                   `[ ACTION ] [ -r <REGION> ] [ -p <PROFILE> ] ` +
+                   `[ ACTION ] ` +
+                   ` -s,--stacks <STACK NAMES> ` +
+                   ` [ -r <REGION> ] [ -p <PROFILE> ] ` +
                    `[-e, --extraVars <VARIABLES>] ` +
-                   `[ -s,--stacks <STACK NAMES> ] ` +
                    `\n\n\tVARIABLES should be "Key=Value" pairs;
                    several can be passed if separated by space\n`;
   console.log(usageStr);
@@ -110,7 +111,6 @@ async function main() {
 
   try {
     // only run stacks that were passed on command line
-    // (if none passed, all will be run):
     stackVars = config.filterStacks(
       yaml.safeLoad(
         fs.readFileSync(
