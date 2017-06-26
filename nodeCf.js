@@ -40,7 +40,7 @@ class CfStack {
 
   async validate(nj, envVars) {
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir,
-      this.rawStackVars.name);
+      this.rawStackVars.templateName || this.rawStackVars.name);
     this.infraBucket = envVars.infraBucket;
     const s3Resp = await this.uploadTemplate();
     await validateAwsCfStack({
@@ -54,7 +54,7 @@ class CfStack {
       `${envVars.environment}-${envVars.application}-${this.name}`;
     console.log(`deploying ${this.deployName}`);
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir,
-      this.name);
+      this.rawStackVars.templateName || this.name);
     this.infraBucket = envVars.infraBucket;
 
     // render stack dependencies
@@ -134,11 +134,13 @@ class CfStack {
 
 // look for template having multiple possible file extensions
 async function getTemplateFile(templateDir, stackName) {
-  const f = await Promise.any(_.map(['yml', 'json', 'yaml'], async(ext) =>
-    await utils.fileExists(`${path.join(templateDir, stackName)}.${ext}`)
+  const f = await Promise.any(_.map(['.yml', '.json', '.yaml', ''], async(ext) =>
+    await utils.fileExists(`${path.join(templateDir, stackName)}${ext}`)
     ));
-  if (f) return f;
-  else throw new Error(`Stack template "${stackName}" not found!`);
+  if (f) {
+    return f;
+  }
+  throw new Error(`Stack template "${stackName}" not found!`);
 }
 
 // return promise that resolves to true/false or rejects with error

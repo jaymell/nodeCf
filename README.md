@@ -29,7 +29,17 @@ Run deployment against specified ENVIRONMENT.
 * EXTRA VARS indicate extra variables for deployment; useful for any variables that are only known at runtime; in the form "KEY=VALUE" -- additional variables should be separated by spaces
 
 ### Template Files
-Cloudformation templates -- by default are stored in `./templates` in either json or yaml format (.json, .yml, or .yaml extension).
+Cloudformation templates -- by default are stored in `./templates` in either json or yaml format.
+
+By default, the template name should match the unqualified name of the stack -- e.g., a stack named 'service' should have a corresponding file named `service`, `service.yml`,  `service.yaml`, or `service.json` in the templates folder. You can override this, however, by passing a `templateName` property on the stack object.
+
+Example:
+```
+- name: network
+  templateName: mynetwork
+  parameters:
+    VpcIPRange: "{{VpcIPRange}}"
+```
 
 ### Config Files
 Config files must be written in yaml and by default are looked for in `./config`

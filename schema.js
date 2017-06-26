@@ -8,6 +8,10 @@ const cfStackConfigSchema = {
       type: "string",
       pattern: "^[a-zA-Z0-9\-]+$"
     },
+    templateName: {
+      type: "string",
+      pattern: "^[a-zA-Z0-9\-]+$"
+    },
     tags: {
       type: "object",
       patternProperties: {
