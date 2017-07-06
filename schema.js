@@ -12,6 +12,9 @@ const cfStackConfigSchema = {
       type: "string",
       pattern: "^[a-zA-Z0-9\-]+$"
     },
+    lambdaArtifact: {
+      type: "string"
+    },
     tags: {
       type: "object",
       patternProperties: {

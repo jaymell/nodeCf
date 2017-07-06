@@ -23,7 +23,6 @@ function unwrapOutputs(outputs) {
 
 class CfStack {
   constructor(stackVars, nodeCfConfig) {
-    // _.merge(this, spec)
     this.name = stackVars.name;
     this.rawStackVars = stackVars;
     this.nodeCfConfig = nodeCfConfig;
@@ -43,6 +42,7 @@ class CfStack {
       this.rawStackVars.templateName || this.rawStackVars.name);
     this.infraBucket = envVars.infraBucket;
     const s3Resp = await this.uploadTemplate();
+    console.log('s3Resp: ', s3Resp);
     await validateAwsCfStack({
       TemplateURL: s3Resp.Location,
     });
@@ -60,6 +60,22 @@ class CfStack {
     // render stack dependencies
     this.stackDependencies = await templater.renderList(nj,
       this.rawStackVars.stackDependencies, envVars);
+
+    // render lambda artifact
+    // and add bucket/key name to envVars
+    if (!(_.isUndefined(this.rawStackVars.lambdaArtifact))) {
+      debug('CfStack.deploy: running lambda tasks');
+
+      this.lambdaArtifact = await templater.render(nj,
+        this.rawStackVars.lambdaArtifact, envVars);
+
+      if(_.isUndefined(envVars.lambda)) envVars.lambda = {};
+      envVars.lambda[this.name] = {};
+      const s3Resp = await uploadLambda(nj, this.infraBucket,
+        this.lambdaArtifact, this.nodeCfConfig.s3LambdaDir);
+      envVars.lambda[this.name].bucket = this.infraBucket;
+      envVars.lambda[this.name].key = s3Resp.Key;
+    }
 
     // run stack dependencies and add them to outputs
     const dependencies = _.chain(await Promise.map(this.stackDependencies,
@@ -134,9 +150,9 @@ class CfStack {
 
 // look for template having multiple possible file extensions
 async function getTemplateFile(templateDir, stackName) {
-  const f = await Promise.any(_.map(['.yml', '.json', '.yaml', ''], async(ext) =>
-    await utils.fileExists(`${path.join(templateDir, stackName)}${ext}`)
-    ));
+  const f = await Promise.any(
+    _.map(['.yml', '.json', '.yaml', ''], async(ext) =>
+      await utils.fileExists(`${path.join(templateDir, stackName)}${ext}`)));
   if (f) {
     return f;
   }
@@ -317,6 +333,19 @@ async function deleteStacks(stacks, envVars) {
   await Promise.each(stacks.reverse(), async(stack) => {
     await stack.delete(envVars);
   });
+}
+
+async function uploadLambda(nj, bucket, localFile, s3LambdaDir) {
+  try {
+    debug(`uploadLambda: localFile = ${localFile}`);
+    const lambdaArtifact =
+      `${path.basename(localFile)}.${new Date().getTime()}`;
+    await ensureBucket(bucket);
+    return await s3Upload(bucket, localFile,
+      `${s3LambdaDir}/${lambdaArtifact}`);
+  } catch (e) {
+    throw e;
+  }
 }
 
 module.exports = {

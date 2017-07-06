@@ -109,8 +109,11 @@ You could then pass your variable through a filter like this:
 
 If the filter function is asynchronous, you must indicate so by wrapping it in an `async` key in modules.exports. You can read more about filters in the [Nunjucks documentation](https://mozilla.github.io/nunjucks/templating.html#filters).
 
-### Pre-Tasks and Post-Tasks
-If you consistently need to run an arbitrary shell script or command immediately prior to or after deploying a CF template, you can add a pre-task, which consists of an array of shell-interpreted strings. For example, you could add a script under `./scripts/` and call that in the pre- or post-tasks, e.g.:
+### Creation Tasks, Pre-Tasks, Post-Tasks, and Lambda Artifacts
+There are a few additional properties you can add to the individual stack definitions to help with deployments.
+
+#### Pre-Tasks, Post-Tasks and Creation Tasks
+If you consistently need to run an arbitrary shell script or command immediately prior to or after deploying a CF template, you can add it under `preTasks` or `postTasks`, which consists of an array of shell-interpreted strings. If you only need to run a script when a stack is first created, you can call it under `creationTasks`. For example:
 
 ```
 stacks:
@@ -119,11 +122,30 @@ stacks:
     VpcIPRange: "{{VpcIPRange}}"
     PrivateSubnet0: "{{PrivateSubnet0}}"
     PrivateSubnet1: "{{PrivateSubnet1}}"
+  creationTasks:
+  - "./scripts/doThisOnlyWhenStackFirstCreated.js"
   preTasks:
   - "./scripts/preTask1.sh"
   - "./scripts/preTask2.sh"
   postTasks:
   - "./scripts/peerToSharedVpc.sh"
+```
+
+Note that you're not limited to shell scripts -- these can be any scripts in any language, provided the system deploying the stacks has the proper tools installed.
+
+#### Lambda Artifacts
+Deploying Lambda functions via Cloudformation can be a pain. The code must be built and packaged (which is _not_ handled here), uploaded to s3 with a unique name (if the name of the artifact doesn't change with subsequent deployments, your code won't be updated), then the location in s3 must be passed to the actual CF template in which the Lambda function is defined. There are a few helpers to make this a bit easier.
+
+Assuming you've built and packaged your lambda function (e.g., in a zip file), you can specify the path to it under a `lambdaArtifact` property, then reference its location with `{{lambda.STACK NAME.bucket}}` and `{{lambda.STACK NAME.key}}`. NodeCf will handle uploading it to s3 with a unique name.
+
+For example:
+```
+stacks:
+- name: myLambdaStack
+  lambdaArtifact: ./lambda/dist/myLambda.zip
+  parameters:
+    LambdaBucket: "{{lambda.myLambdaStack.bucket}}"
+    LambdaKey: "{{lambda.myLambdaStack.key}}"
 ```
 
 ### TO DO

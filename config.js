@@ -15,8 +15,8 @@ function loadNodeCfConfig(environment, cfg) {
     localCfTemplateDir: `./templates`,
     localCfgDir: localCfgDir,
     filters: `${localCfgDir}/filters.js`,
-    s3CfTemplateDir: `/${environment}/templates`,
-    s3LambdaDir: `/${environment}/lambda`,
+    s3CfTemplateDir: `${environment}/templates`,
+    s3LambdaDir: `${environment}/lambda`,
     globalCfg: `${localCfgDir}/global.yml`,
     stackCfg: `${localCfgDir}/stacks.yml`,
     defaultTags: {
