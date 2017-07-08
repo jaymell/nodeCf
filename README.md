@@ -1,5 +1,5 @@
 ## Overview
-Simple package to help with Cloudformation deployments
+Simple package to help with Cloudformation deployments. It is written in nodejs, but the goal here is that you do not have to write any code to use it.
 
 ### Goals
 * Make it easy to deploy multi-stack, multi-account, multi-environment, and multi-region Cloudformation templates
@@ -134,9 +134,9 @@ stacks:
 Note that you're not limited to shell scripts -- these can be any scripts in any language, provided the system deploying the stacks has the proper tools installed.
 
 #### Lambda Artifacts
-Deploying Lambda functions via Cloudformation can be a pain. The code must be built and packaged (which is _not_ handled here), uploaded to s3 with a unique name (if the name of the artifact doesn't change with subsequent deployments, your code won't be updated), then the location in s3 must be passed to the actual CF template in which the Lambda function is defined. There are a few helpers to make this a bit easier.
+Deploying Lambda functions via Cloudformation can be a pain. The code must be built and packaged (which is _not_ handled here), uploaded to s3 with a unique name (if the name of the artifact doesn't change with subsequent deployments, your code won't be updated), then the location in s3 must be passed to the actual CF template in which the Lambda function is defined. NodeCf offers a few helpers to make this a bit easier.
 
-Assuming you've built and packaged your lambda function (e.g., in a zip file), you can specify the path to it under a `lambdaArtifact` property, then reference its location with `{{lambda.STACK NAME.bucket}}` and `{{lambda.STACK NAME.key}}`. NodeCf will handle uploading it to s3 with a unique name.
+Assuming you've built and packaged your lambda function into an artifact, e.g., a zip file, you can specify the path to it under a `lambdaArtifact` property, then reference its location with `{{lambda.STACK NAME.bucket}}` and `{{lambda.STACK NAME.key}}`. NodeCf will handle uploading it to s3 with a unique name.
 
 For example:
 ```
