@@ -70,10 +70,19 @@ describe('loadNodeCfConfig', () => {
 });
 
 describe('parseArgs', () => {
-  it('should throw if no stacks passed', () => {
+  it('should return undefined if no stacks passed', () => {
     const myArgs = { _: [ 'Dev' ], region: 'us-east-1' };
-    assert.throws(() => config.parseArgs(myArgs), /No stack name passed/);
+    const retVal = config.parseArgs(myArgs);
+    assert.equal(retVal.stackFilters, undefined);
   });
+
+  it('should return names of stacks passed', () => {
+    const myArgs = { _: [ 'Dev' ], region: 'us-east-1',
+      stacks: 'stack1,stack2' };
+    const retVal = config.parseArgs(myArgs);
+    assert.deepEqual(retVal.stackFilters, ['stack1' ,'stack2']);
+  });
+
   it('should throw if no env passed', () => {
     const myArgs = { _: [], region: 'us-east-1' };
     assert.throws(() => config.parseArgs(myArgs), /invalid arguments passed/);

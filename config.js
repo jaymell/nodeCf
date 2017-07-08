@@ -54,9 +54,6 @@ function parseArgs(argv) {
     action = argv['_'][1];
   }
 
-  if ( (!( 's' in argv)) && (!( 'stacks' in argv ))) {
-    throw new Error('No stack name passed');
-  }
   // fail out if empty '-s' or '--stacks' passed:
   else if ('s' in argv || 'stacks' in argv) {
     let stacks = argv['s'] || argv['stacks'];

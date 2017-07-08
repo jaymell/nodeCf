@@ -11,6 +11,8 @@ const schema = require('./schema.js');
 const nodeCf = require('./nodeCf.js');
 const utils = require('./utils.js');
 
+const DEFAULT_REGION = 'us-east-1';
+
 function usage() {
   // FIXME: add more description here
   const usageStr = `\n\tUsage: node_modules/.bin/nodeCf <ENVIRONMENT> ` +
@@ -31,7 +33,7 @@ async function main() {
   try {
     args = config.parseArgs(
       require('minimist')(process.argv.slice(2),
-        {default: {region: 'us-east-1'}})
+        {default: { region: DEFAULT_REGION }})
     );
   } catch (e) {
     console.log(`Failed to parse command line arguments: ${e.message}`);
@@ -110,14 +112,18 @@ async function main() {
   }
 
   try {
-    // only run stacks that were passed on command line
+
+    // stacks passed on cli can override stacks defined on env file
+    let stackFilters = args.stackFilters || envVars.stacks;
+
     stackVars = config.filterStacks(
       yaml.safeLoad(
         fs.readFileSync(
           nodeCfCfg.stackCfg)
       ),
-      args.stackFilters
+      stackFilters
     );
+
     // if no stacks exist or no stacks match filter:
     if (stackVars.length == 0) {
       throw new Error('invalid stack argument');
