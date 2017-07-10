@@ -45,13 +45,22 @@ function parseExtraVars(extraVars) {
 
 // validate command line arguments
 function parseArgs(argv) {
-  if ( argv['_'].length < 1 )
-    throw new Error('invalid arguments passed');
+  debug('parseArgs argv: ', argv);
 
   // default action
   var action = 'deploy';
-  if ( argv['_'].length >= 2 ) {
-    action = argv['_'][1];
+  if ( argv['_'].length >= 1 ) {
+    action = argv['_'][0];
+  }
+
+  // fail out if environment not passed:
+  if ((!('e' in argv)) && (!('environment' in argv))) {
+    throw new Error('No environment passed');
+  }
+  // or if empty environment passed:
+  let env = argv['e'] || argv['environment'];
+  if (typeof env !== 'string') {
+    throw new Error('No environment passed');
   }
 
   // fail out if empty '-s' or '--stacks' passed:
@@ -68,8 +77,8 @@ function parseArgs(argv) {
       : undefined );
 
   return {
-    environment: argv['_'][0],
-    extraVars: parseExtraVars(argv['e'] || argv['extraVars']),
+    environment: argv['e'] || argv['environment'],
+    extraVars: parseExtraVars(argv['x'] || argv['extraVars']),
     action: action,
     region: argv['r'] || argv['region'],
     profile: argv['p'],

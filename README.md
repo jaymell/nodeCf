@@ -17,11 +17,12 @@ npm install --save 'https://github.com/jaymell/nodeCf.git#v.9.7.1'
 
 ### Usage
 ```
-node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [-s,--stacks <STACK NAMES>] [ -r <REGION> ] [ -p <PROFILE> ] [ -e, --extra-vars <EXTRA VARS> ]
+node_modules/.bin/nodeCf [ ACTION ] -e,--environment <ENVIRONMENT> [-s,--stacks <STACK NAMES>] [ -r <REGION> ] [ -p <PROFILE> ] [ -x, --extra-vars <EXTRA VARS> ]
 ```
 
 Run deployment against specified ENVIRONMENT.
 
+* ENVIRONMENT should match name of environment file
 * ACTION defaults to 'deploy': choices are 'deploy', 'delete', and 'validate'
 * REGION specifies the desired AWS Region. Currently defaults to 'us-east-1'
 * PROFILE specifies an optional name for an AWS profile to assume when running the job
