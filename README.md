@@ -17,7 +17,7 @@ npm install --save 'https://github.com/jaymell/nodeCf.git#v.9.7.1'
 
 ### Usage
 ```
-node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] -s,--stacks <STACK NAMES> [ -r <REGION> ] [ -p <PROFILE> ] [ -e, --extra-vars <EXTRA VARS> ]
+node_modules/.bin/nodeCf <ENVIRONMENT> [ ACTION ] [-s,--stacks <STACK NAMES>] [ -r <REGION> ] [ -p <PROFILE> ] [ -e, --extra-vars <EXTRA VARS> ]
 ```
 
 Run deployment against specified ENVIRONMENT.
@@ -50,6 +50,7 @@ Config files must be written in yaml and by default are looked for in `./config`
 
 ### Required variables:
 * environment -- this must be passed on command line as first argument to command; its name must match the name of your environment variables file
+* stacks -- these must either be passed on command line or defined in your environments file(s); it is an array of stacks which must be run -- order matters
 * region -- this must be passed on command line; currently defaults to us-east-1 if not specified
 * account -- your AWS account number
 * application -- this can be anything, but the name of your repository is a good default; it is used for naming and uniquely identifying resources
@@ -134,7 +135,12 @@ stacks:
 Note that you're not limited to shell scripts -- these can be any scripts in any language, provided the system deploying the stacks has the proper tools installed.
 
 #### Lambda Artifacts
-Deploying Lambda functions via Cloudformation can be a pain. The code must be built and packaged (which is _not_ handled here), uploaded to s3 with a unique name (if the name of the artifact doesn't change with subsequent deployments, your code won't be updated), then the location in s3 must be passed to the actual CF template in which the Lambda function is defined. NodeCf offers a few helpers to make this a bit easier.
+Deploying Lambda functions via Cloudformation can be a pain. 
+1. The code must be built and packaged (which is _not_ handled here) or if not a compiled language, embedded directly within the Cloudformation template
+2. uploaded to s3 with a unique name (if the name of the artifact doesn't change with subsequent deployments, your code won't be updated) 
+3. the location in s3 must be passed to the actual CF template in which the Lambda function is defined. 
+
+NodeCf offers a few helpers to make these steps a bit easier.
 
 Assuming you've built and packaged your lambda function into an artifact, e.g., a zip file, you can specify the path to it under a `lambdaArtifact` property, then reference its location with `{{lambda.STACK NAME.bucket}}` and `{{lambda.STACK NAME.key}}`. NodeCf will handle uploading it to s3 with a unique name.
 
@@ -153,3 +159,4 @@ stacks:
 * Use change sets
 * Make it easy to set stack update policies
 * Add example project
+* Make global vars optional -- and perhaps call them 'globalVars' or 'baseVars' instead 
