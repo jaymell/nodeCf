@@ -15,11 +15,13 @@ const DEFAULT_REGION = 'us-east-1';
 
 function usage() {
   // FIXME: add more description here
-  const usageStr = `\n\tUsage: node_modules/.bin/nodeCf <ENVIRONMENT> ` +
-                   `[ ACTION ] ` +
+  const usageStr = `\n\tUsage: ` +
+					`\n\t\tnode_modules/.bin/nodeCf -e,--environment <ENVIRONMENT> ` +
                    ` -s,--stacks <STACK NAMES> ` +
                    ` [ -r <REGION> ] [ -p <PROFILE> ] ` +
-                   `[-e, --extraVars <VARIABLES>] ` +
+                   `[-x, --extraVars <VARIABLES>] ` +
+                   ` [ ACTION ]` +
+                   `\n\n\tACTION defaults to 'deploy'` +
                    `\n\n\tVARIABLES should be "Key=Value" pairs;
                    several can be passed if separated by space\n`;
   console.log(usageStr);
