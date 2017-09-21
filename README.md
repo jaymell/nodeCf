@@ -111,8 +111,28 @@ You could then pass your variable through a filter like this:
 
 If the filter function is asynchronous, you must indicate so by wrapping it in an `async` key in modules.exports. You can read more about filters in the [Nunjucks documentation](https://mozilla.github.io/nunjucks/templating.html#filters).
 
-### Creation Tasks, Pre-Tasks, Post-Tasks, and Lambda Artifacts
+### Outputs, Pre-Tasks, Post-Tasks, Creation Tasks, and Lambda Artifacts
 There are a few additional properties you can add to the individual stack definitions to help with deployments.
+
+#### Stack Ouptuts
+If you have a multi-stack project, you often need to reference outputs from one stack as inputs to another. You can do this via cross-stack references, but cross-stack references not only tightly couple your stacks together, they also can't be leveraged in certain scenarios. An alternative approach is to use NodeCf to do the integration for you:
+
+```
+stacks:
+- name: network
+  parameters:
+    VpcIPRange: "{{VpcIPRange}}"
+- name: rds
+  parameters:
+    PrivateSubnet0: "{{stacks.network.outputs.PrivateSubnet0}}"
+    PrivateSubnet1: "{{stacks.network.outputs.PrivateSubnet1}}"
+  stackDependencies: 
+  - "{{environment}}-{{application}}-network"
+```
+
+In order to use the outputs from the network stack in the rds stack, declare the dependency on the fully-qualified name of the network stack in `stackDependencies`, then reference the name of the output variable as `stacks.outputs.<Variable Name>`.
+
+Note: You have to declare the proper variables in the `Outputs` section of the `network` Cloudformation template.
 
 #### Pre-Tasks, Post-Tasks and Creation Tasks
 If you consistently need to run an arbitrary shell script or command immediately prior to or after deploying a CF template, you can add it under `preTasks` or `postTasks`, which consists of an array of shell-interpreted strings. If you only need to run a script when a stack is first created, you can call it under `creationTasks`. For example:
@@ -143,7 +163,7 @@ Deploying Lambda functions via Cloudformation can be a pain.
 
 NodeCf offers a few helpers to make these steps a bit easier.
 
-Assuming you've built and packaged your lambda function into an artifact, e.g., a zip file, you can specify the path to it under a `lambdaArtifact` property, then reference its location with `{{lambda.STACK NAME.bucket}}` and `{{lambda.STACK NAME.key}}`. NodeCf will handle uploading it to s3 with a unique name.
+Assuming you've built and packaged your lambda function into an artifact, e.g., a zip file, you can specify the path to it under a `lambdaArtifact` property, then reference its location with `{{lambda.<Stack Name>.bucket}}` and `{{lambda.<Stack Name>.key}}`. NodeCf will handle uploading it to s3 with a unique name.
 
 For example:
 ```
