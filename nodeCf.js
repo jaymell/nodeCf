@@ -7,7 +7,7 @@ const schema = require('./schema.js');
 const utils = require('./utils.js');
 const templater = require('./templater.js');
 const debug = require('debug')('nodecf');
-const AWS = require('aws-sdk');;
+const AWS = require('aws-sdk');
 AWS.config.setPromisesDependency(Promise);
 
 var wrapWith = (wk, wv, obj) =>
@@ -42,7 +42,7 @@ class CfStack {
       this.rawStackVars.templateName || this.rawStackVars.name);
     this.infraBucket = envVars.infraBucket;
     const s3Resp = await this.uploadTemplate();
-    console.log('s3Resp: ', s3Resp);
+    debug('s3Resp: ', s3Resp);
     await validateAwsCfStack({
       TemplateURL: s3Resp.Location,
     });
@@ -195,7 +195,7 @@ async function ensureBucket(bucket) {
 
 function s3Upload(bucket, src, dest) {
   const cli = new AWS.S3();
-  console.log(`uploading template ${src} to s3://${path.join(bucket, dest)}`);
+  debug(`uploading template ${src} to s3://${path.join(bucket, dest)}`);
   const stream = fs.createReadStream(src);
   return cli.upload({
     Bucket: bucket,
@@ -303,7 +303,7 @@ async function validateAwsCfStack(params) {
 
 function configAws(params) {
   if (typeof params.profile !== 'undefined' && params.profile) {
-    var credentials = new AWS.SharedIniFileCredentials({
+    const credentials = new AWS.SharedIniFileCredentials({
       profile: params.profile
     });
     AWS.config.credentials = credentials;

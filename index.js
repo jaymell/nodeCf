@@ -67,7 +67,7 @@ async function main() {
       const filtersModule = await utils.fileExists(path.join(process.cwd(),
         nodeCfCfg.filters));
       const filters = require(filtersModule);
-      nj = templater.loadNjEnv(filters.sync || filters, filters.async);
+      nj = templater.loadNjEnv(filters.sync, filters.async);
     } catch (e) {
       nj = templater.loadNjEnv();
     }
