@@ -20,7 +20,7 @@ describe('bucketExists', function() {
 
   it('should throw if 403 status', function() {
     // XXX: is this the best way to test a Promise rejection?
-    return bucketExists('testBucket')
+    return bucketExists({}, 'testBucket')
       .catch(e =>
         assert.equal(e.message,
           '403: You don\'t have permissions to access this bucket'));
@@ -35,7 +35,7 @@ describe('bucketExists', function() {
   });
 
   it('should return false if 404', function() {
-    return bucketExists('testBucket')
+    return bucketExists({}, 'testBucket')
       .then(r => assert.equal(false, r));
   });
 
@@ -48,7 +48,7 @@ describe('bucketExists', function() {
   });
 
   it('should resolve to true if no exception thrown', function() {
-    return bucketExists('testBucket')
+    return bucketExists({}, 'testBucket')
       .then(r => assert.equal(true, r));
   });
 
