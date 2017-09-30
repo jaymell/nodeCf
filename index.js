@@ -12,11 +12,12 @@ const nodeCf = require('./src/nodeCf.js');
 const utils = require('./src/utils.js');
 
 function usage() {
-  // FIXME: add more description here
+  /* eslint-disable */
   const usageStr = `\n\tUsage: ` +
 					`\n\t\tnode_modules/.bin/nodeCf -e,--environment <ENVIRONMENT> -r,--region <REGION> [ -s,--stacks <STACK NAMES> ] [ -p <PROFILE> ] [-x, --extraVars <VARIABLES>] [ ACTION ]` +
                    `\n\n\tACTION defaults to 'deploy'; other options are 'validate' and 'delete'` +
                    `\n\n\tVARIABLES should be "Key=Value" pairs; several can be passed if separated by spaces and wrapped in quotes, e.g., "Key1=Value1 Key2=Value2"\n`;
+  /* eslint-enable */
   console.log(usageStr);
   process.exit(-1);
 }

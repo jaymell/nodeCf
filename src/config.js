@@ -43,6 +43,21 @@ function parseExtraVars(extraVars) {
   return _.fromPairs(myVars);
 }
 
+function failIfAbsent(shortFlag, longFlag, argv) {
+  // fail out if not passed:
+  if ((!(shortFlag in argv)) && (!(longFlag in argv))) {
+    throw new Error(`No ${longFlag} passed`);
+  }
+}
+
+function failIfEmpty(shortFlag, longFlag, argv) {
+  // fail if empty passed:
+  let env = argv[shortFlag] || argv[longFlag];
+  if (typeof env !== 'string') {
+    throw new Error(`No ${longFlag} passed`);
+  }
+}
+
 // validate command line arguments
 function parseArgs(argv) {
   debug('parseArgs argv: ', argv);
@@ -53,23 +68,11 @@ function parseArgs(argv) {
     action = argv['_'][0];
   }
 
-  // fail out if environment not passed:
-  if ((!('e' in argv)) && (!('environment' in argv))) {
-    throw new Error('No environment passed');
-  }
-  // or if empty environment passed:
-  let env = argv['e'] || argv['environment'];
-  if (typeof env !== 'string') {
-    throw new Error('No environment passed');
-  }
-
-  // fail out if empty '-s' or '--stacks' passed:
-  else if ('s' in argv || 'stacks' in argv) {
-    let stacks = argv['s'] || argv['stacks'];
-    if (typeof stacks !== 'string') {
-      throw new Error('No stack name passed');
-    }
-  }
+  failIfEmpty('e', 'environment', argv);
+  failIfAbsent('e', 'environment', argv);
+  failIfEmpty('r', 'region', argv);
+  failIfAbsent('r', 'region', argv);
+  if ('s' in argv || 'stacks' in argv) failIfEmpty('s', 'stacks', argv);
 
   var getStackNames = stacks =>
     ( _.isString(stacks) ?

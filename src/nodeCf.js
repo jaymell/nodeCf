@@ -34,11 +34,13 @@ class CfStack {
     const timestamp = new Date().getTime();
     this.s3Location = path.join(this.nodeCfConfig.s3CfTemplateDir,
       `${this.name}-${timestamp}.yml`);
-    return await s3Upload(credentials, this.infraBucket, this.template, this.s3Location);
+    return await s3Upload(credentials,
+      this.infraBucket, this.template, this.s3Location);
   }
 
   async validate(nj, envVars) {
-    const credentials = await getAwsCredentials(this.rawStackVars.role || envVars.role);
+    const credentials =
+      await getAwsCredentials(this.rawStackVars.role || envVars.role);
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir,
       this.rawStackVars.templateName || this.rawStackVars.name);
     this.infraBucket = envVars.infraBucket;
@@ -51,7 +53,8 @@ class CfStack {
   }
 
   async deploy(nj, envVars) {
-    const credentials = await getAwsCredentials(this.rawStackVars.role || envVars.role);
+    const credentials =
+      await getAwsCredentials(this.rawStackVars.role || envVars.role);
     this.deployName =
       `${envVars.environment}-${envVars.application}-${this.name}`;
     console.log(`deploying ${this.deployName}`);
@@ -141,7 +144,8 @@ class CfStack {
   }
 
   async delete(envVars) {
-    const credentials = await getAwsCredentials(this.rawStackVars.role || envVars.role);
+    const credentials =
+      await getAwsCredentials(this.rawStackVars.role || envVars.role);
     this.deployName =
       `${envVars.environment}-${envVars.application}-${this.name}`;
     await deleteAwsCfStack(credentials, {
