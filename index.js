@@ -11,19 +11,12 @@ const schema = require('./src/schema.js');
 const nodeCf = require('./src/nodeCf.js');
 const utils = require('./src/utils.js');
 
-const DEFAULT_REGION = 'us-east-1';
-
 function usage() {
   // FIXME: add more description here
   const usageStr = `\n\tUsage: ` +
-					`\n\t\tnode_modules/.bin/nodeCf -e,--environment <ENVIRONMENT> ` +
-                   ` -s,--stacks <STACK NAMES> ` +
-                   ` [ -r <REGION> ] [ -p <PROFILE> ] ` +
-                   `[-x, --extraVars <VARIABLES>] ` +
-                   ` [ ACTION ]` +
-                   `\n\n\tACTION defaults to 'deploy'` +
-                   `\n\n\tVARIABLES should be "Key=Value" pairs;
-                   several can be passed if separated by space\n`;
+					`\n\t\tnode_modules/.bin/nodeCf -e,--environment <ENVIRONMENT> -r,--region <REGION> [ -s,--stacks <STACK NAMES> ] [ -p <PROFILE> ] [-x, --extraVars <VARIABLES>] [ ACTION ]` +
+                   `\n\n\tACTION defaults to 'deploy'; other options are 'validate' and 'delete'` +
+                   `\n\n\tVARIABLES should be "Key=Value" pairs; several can be passed if separated by spaces and wrapped in quotes, e.g., "Key1=Value1 Key2=Value2"\n`;
   console.log(usageStr);
   process.exit(-1);
 }
@@ -34,8 +27,7 @@ async function main() {
 
   try {
     args = config.parseArgs(
-      require('minimist')(process.argv.slice(2),
-        {default: { region: DEFAULT_REGION }})
+      require('minimist')(process.argv.slice(2))
     );
   } catch (e) {
     console.log(`Failed to parse command line arguments: ${e.message}`);
@@ -147,8 +139,11 @@ async function main() {
   }
 
   try {
-    // FIXME: this is stupid but currently
-    // necessary to assist with testing
+    // this is done b/c aws-sdk-mock
+    // expects AWS to be imported in same
+    // module that it's used -- else would
+    // probably make more sense to declare it in
+    // this module:
     nodeCf.configAws({
       profile: args.profile,
       region: envVars.region
@@ -158,9 +153,8 @@ async function main() {
     process.exit(1);
   }
 
-  var stacks;
   try {
-    stacks = _.map(stackVars, v => new nodeCf.CfStack(v, nodeCfCfg));
+    var stacks = _.map(stackVars, v => new nodeCf.CfStack(v, nodeCfCfg));
   } catch (e) {
     console.log(`Failed to instantiate stack objects: ${e.message}`);
     process.exit(1);

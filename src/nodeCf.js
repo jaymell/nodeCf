@@ -318,12 +318,18 @@ function configAws(params) {
 }
 
 async function getAwsCredentials(role) {
-  if (_.isUndefined(role))
-    throw new Error("No role passed -- can't create credentials");
+  // this effectively means that all clients
+  // will depend on profile or environment-
+  // obtained credentials rather than role assumption:
+  if (_.isUndefined(role)) return undefined;
+
   credentials = new AWS.TemporaryCredentials({
-      RoleArn: role
+    RoleArn: role
   });
+  // laziness of temp credentials causes problems
+  // if this not done:
   await credentials.refresh();
+
   return credentials;
 }
 
