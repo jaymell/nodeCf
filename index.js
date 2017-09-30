@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const Promise = require('bluebird');
-const fs = require('fs');
+const fs = Promise.promisifyAll(require('fs'));
 const yaml = require('js-yaml');
 const _ = require('lodash');
 const config = require('./src/config.js');
@@ -10,6 +10,7 @@ const path = require('path');
 const schema = require('./src/schema.js');
 const nodeCf = require('./src/nodeCf.js');
 const utils = require('./src/utils.js');
+const debug = require('debug')('index');
 
 function usage() {
   /* eslint-disable */
@@ -38,7 +39,7 @@ async function main() {
   try {
     if ( typeof args.cfg !== 'undefined') {
       try {
-        var cfg = yaml.safeLoad(fs.readFileSync(args.cfg));
+        const cfg = yaml.safeLoad(await fs.ReadFileAsync(args.cfg));
       } catch (e) {
         console.log(`Unable to load nodeCf config file: ${e.message}`);
         process.exit(1);
@@ -47,6 +48,7 @@ async function main() {
       var cfg = {};
     }
     nodeCfCfg = config.loadNodeCfConfig(args.environment, cfg);
+    debug(`nodeCfCfg: ${nodeCfCfg}`);
   }
   catch (e) {
     console.log(e.message);
@@ -69,20 +71,22 @@ async function main() {
     process.exit(1);
   }
 
-  // FIXME: global should probably just be optional
-  try {
-    globalVars = yaml.safeLoad(
-      fs.readFileSync(
-        nodeCfCfg.globalCfg
-    ));
-  } catch (e) {
-    console.log(`Failed to load global config: ${e.message}`);
-    process.exit(1);
+  // load global config if it exists:
+  if (fs.existsSync(nodeCfCfg.globalCfg)) {
+    try {
+      globalVars = yaml.safeLoad(
+        await fs.readFileAsync(
+          nodeCfCfg.globalCfg
+      ));
+    } catch (e) {
+      console.log(`Failed to load global config: ${e.message}`);
+      process.exit(1);
+    }
   }
 
   try {
     envVars = yaml.safeLoad(
-      fs.readFileSync(
+      await fs.readFileAsync(
         path.join(
           nodeCfCfg.localCfgDir,
          `${args.environment}.yml`
@@ -113,7 +117,7 @@ async function main() {
 
     stackVars = config.filterStacks(
       yaml.safeLoad(
-        fs.readFileSync(
+        await fs.readFileAsync(
           nodeCfCfg.stackCfg)
       ),
       stackFilters
