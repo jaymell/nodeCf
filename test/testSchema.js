@@ -1,8 +1,8 @@
 const assert = require('assert');
 const rewire = require("rewire");
-const config = require('../config.js');
-const nodeCf = rewire('../nodeCf.js');
-const schema = rewire('../schema.js');
+const config = require('../src/config.js');
+const nodeCf = rewire('../src/nodeCf.js');
+const schema = rewire('../src/schema.js');
 
 const cfStackConfigSchema = schema.__get__('cfStackConfigSchema');
 const envConfigSchema = schema.__get__('envConfigSchema');

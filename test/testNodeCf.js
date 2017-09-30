@@ -1,8 +1,8 @@
 const assert = require('assert');
 const rewire = require("rewire");
-const config = require('../config.js');
-const templater = require('../templater.js');
-const nodeCf = rewire('../nodeCf.js');
+const config = require('../src/config.js');
+const templater = require('../src/templater.js');
+const nodeCf = rewire('../src/nodeCf.js');
 const Promise = require('bluebird');
 
 const AWS = require('aws-sdk-mock');

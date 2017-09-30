@@ -1,5 +1,5 @@
 const Promise = require('bluebird');
-const utils = require('../utils.js');
+const utils = require('../src/utils.js');
 const assert = require('assert');
 const _ = require('lodash');
 

@@ -1,7 +1,7 @@
 const assert = require('assert');
 const rewire = require("rewire");
-const nodeCf = rewire('../nodeCf.js');
-const utils = require('../utils.js');
+const nodeCf = rewire('../src/nodeCf.js');
+const utils = require('../src/utils.js');
 const sinon = require('sinon');
 const Promise = require('bluebird');
 

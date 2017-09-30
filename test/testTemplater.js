@@ -1,5 +1,5 @@
 const assert = require('assert');
-const templater = require('../templater.js');
+const templater = require('../src/templater.js');
 
 describe('render', () => {
   const myVars = {

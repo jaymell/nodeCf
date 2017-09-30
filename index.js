@@ -4,12 +4,12 @@ const Promise = require('bluebird');
 const fs = require('fs');
 const yaml = require('js-yaml');
 const _ = require('lodash');
-const config = require('./config.js');
-const templater = require('./templater.js');
+const config = require('./src/config.js');
+const templater = require('./src/templater.js');
 const path = require('path');
-const schema = require('./schema.js');
-const nodeCf = require('./nodeCf.js');
-const utils = require('./utils.js');
+const schema = require('./src/schema.js');
+const nodeCf = require('./src/nodeCf.js');
+const utils = require('./src/utils.js');
 
 const DEFAULT_REGION = 'us-east-1';
 
