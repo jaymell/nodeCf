@@ -37,7 +37,7 @@ async function main() {
   }
 
   try {
-    if ( typeof args.cfg !== 'undefined') {
+    if (typeof args.cfg !== 'undefined') {
       try {
         const cfg = yaml.safeLoad(await fs.ReadFileAsync(args.cfg));
       } catch (e) {
@@ -48,27 +48,33 @@ async function main() {
       var cfg = {};
     }
     nodeCfCfg = config.loadNodeCfConfig(args.environment, cfg);
-    debug(`nodeCfCfg: ${nodeCfCfg}`);
+    debug('nodeCfCfg: ', nodeCfCfg);
   }
   catch (e) {
     console.log(e.message);
     usage();
   }
 
-  // instantiate nunjucks renderer
-  try {
-    // imported relative to current directory:
+  // instantiate nunjucks, include filters
+  // if they exist:
+  const filtersModule = path.join(process.cwd(),
+        nodeCfCfg.filters);
+  if (fs.existsSync(filtersModule)) {
     try {
-      const filtersModule = await utils.fileExists(path.join(process.cwd(),
-        nodeCfCfg.filters));
       const filters = require(filtersModule);
       nj = templater.loadNjEnv(filters.sync, filters.async);
     } catch (e) {
-      nj = templater.loadNjEnv();
+      console.log('Failed to load Nunjucks environment: ', e);
+      process.exit(1);
     }
-  } catch (e) {
-    console.log('Failed to load Nunjucks environment: ', e);
-    process.exit(1);
+  }
+  else {
+    try {
+      nj = templater.loadNjEnv();
+    } catch (e) {
+      console.log('Failed to load Nunjucks environment: ', e);
+      process.exit(1);
+    }
   }
 
   // load global config if it exists:
