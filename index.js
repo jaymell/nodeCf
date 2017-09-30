@@ -175,7 +175,7 @@ async function main() {
       break;
     case 'validate':
       try {
-        await nodeCf.validate(nj, stacks, envVars);
+        await nodeCf.validate(stackVars, envVars, nj, nodeCfCfg);
       } catch (e) {
         console.log(`validation failed: `, e);
         process.exit(1);
@@ -183,7 +183,8 @@ async function main() {
       break;
     case 'delete':
       try {
-        await nodeCf.deleteStacks(stacks, envVars);
+        // note that stack order is reversed prior to deletion:
+        await nodeCf.deleteStacks(stackVars.reverse(), envVars, nj, nodeCfCfg);
       } catch (e) {
         console.log(`delete failed: `, e);
         process.exit(1);
