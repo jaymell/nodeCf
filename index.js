@@ -164,17 +164,10 @@ async function main() {
     process.exit(1);
   }
 
-  try {
-    var stacks = _.map(stackVars, v => new nodeCf.CfStack(v, nodeCfCfg));
-  } catch (e) {
-    console.log(`Failed to instantiate stack objects: ${e.message}`);
-    process.exit(1);
-  }
-
   switch (args.action) {
     case 'deploy':
       try {
-        await nodeCf.deploy(nj, stacks, envVars);
+        await nodeCf.deploy(stackVars, envVars, nj, nodeCfCfg);
       } catch (e) {
         console.log(`deployment failed: `, e);
         process.exit(1);
