@@ -2,24 +2,12 @@ const Promise = require('bluebird');
 const _ = require('lodash');
 const fs = Promise.promisifyAll(require('fs'));
 const path = require("path");
-const config = require('./config.js');
-const schema = require('./schema.js');
 const utils = require('./utils.js');
+const schema = require('./schema.js');
 const templater = require('./templater.js');
 const debug = require('debug')('nodecf');
 const AWS = require('aws-sdk');
 AWS.config.setPromisesDependency(Promise);
-
-var wrapWith = (wk, wv, obj) =>
-  _.toPairs(obj).map((it) =>
-    _.zipObject([wk, wv], it));
-
-function unwrapOutputs(outputs) {
-  return _.chain(outputs)
-    .keyBy('OutputKey')
-    .mapValues('OutputValue')
-    .value();
-}
 
 class CfStack {
   constructor(stackVars, envVars, nj, nodeCfConfig) {
@@ -43,20 +31,20 @@ class CfStack {
       await getAwsCredentials(this.rawStackVars.role || this.envVars.role);
   }
 
-  async uploadTemplate(credentials) {
-    await ensureBucket(credentials, this.infraBucket);
+  async uploadTemplate() {
+    await ensureBucket(this.credentials, this.infraBucket);
     const timestamp = new Date().getTime();
     const s3Location = path.join(this.nodeCfConfig.s3CfTemplateDir,
       `${this.name}-${timestamp}.yml`);
-    return await s3Upload(credentials,
+    return await s3Upload(this.credentials,
       this.infraBucket, this.template, s3Location);
   }
 
   async validate() {
     await this.lateInit();
-    const s3Resp = await this.uploadTemplate(credentials);
+    const s3Resp = await this.uploadTemplate();
     debug('s3Resp: ', s3Resp);
-    await validateAwsCfStack(credentials, {
+    await validateAwsCfStack(this.credentials, {
       TemplateURL: s3Resp.Location,
     });
     console.log(`${this.name} is a valid Cloudformation template`);
@@ -115,7 +103,7 @@ class CfStack {
   // these only run if stack didn't already exist:
   async doCreationTasks(tasks, label) {
     if (!(await awsCfStackExists(this.credentials, this.deployName))) {
-      await this.doTasks(tasks, label)
+      await this.doTasks(tasks, label);
     }
   }
 
@@ -126,7 +114,7 @@ class CfStack {
     const tags = wrapWith("Key", "Value",
       await this.renderObj(this.rawStackVars.tags));
     // deploy stack
-    const s3Resp = await this.uploadTemplate(this.credentials);
+    const s3Resp = await this.uploadTemplate();
     const stackResp = await ensureAwsCfStack(this.credentials, {
       StackName: this.deployName,
       Parameters: parameters,
@@ -144,11 +132,14 @@ class CfStack {
     const stackExportsObj = {};
     const stackExports = stackExportsObj[this.name] = {};
     // add dependencies to envVars.stacks:
-    _.assign(this.envVars.stacks, (await this.doDependencies(this.rawStackVars.stackDependencies)));
+    _.assign(this.envVars.stacks,
+      (await this.doDependencies(this.rawStackVars.stackDependencies)));
     // add lambda helpers to stack exports:
-    stackExports.lambda = await this.doLambdaArtifacts(this.rawStackVars.lambdaArtifact);
+    stackExports.lambda =
+      await this.doLambdaArtifacts(this.rawStackVars.lambdaArtifact);
     // creation tasks:
-    await this.doCreationTasks(this.rawStackVars.creationTasks, 'creationTasks');
+    await this.doCreationTasks(this.rawStackVars.creationTasks,
+      'creationTasks');
     // pre-tasks:
     await this.doTasks(this.rawStackVars.preTasks, 'preTasks');
     // deploy stack:
@@ -160,11 +151,28 @@ class CfStack {
   }
 
   async delete(envVars) {
-    await deleteAwsCfStack(this.credentials, {
-      StackName: this.deployName
-    });
-    console.log(`deleted ${this.deployName}`);
+    if (await awsCfStackExists(this.credentials, this.deployName)) {
+      const resp = await deleteAwsCfStack(this.credentials, {
+        StackName: this.deployName
+      });
+      debug(`CfStack.delete: ${JSON.stringify(resp)}`);
+      console.log(`deleted ${this.deployName}`);
+    }
+    else {
+      console.log('Nothing to delete.');
+    }
   }
+}
+
+var wrapWith = (wk, wv, obj) =>
+  _.toPairs(obj).map((it) =>
+    _.zipObject([wk, wv], it));
+
+function unwrapOutputs(outputs) {
+  return _.chain(outputs)
+    .keyBy('OutputKey')
+    .mapValues('OutputValue')
+    .value();
 }
 
 // look for template having multiple possible file extensions
@@ -315,10 +323,11 @@ async function deleteAwsCfStack(credentials, params) {
   const cli = new AWS.CloudFormation({ credentials: credentials });
   console.log(`deleting cloudformation stack ${params.StackName}`);
   try {
-    const data = await cli.deleteStack(params).promise();
+    const resp = await cli.deleteStack(params).promise();
     await cli.waitFor('stackDeleteComplete', {
       StackName: params.StackName
     }).promise();
+    return resp;
   } catch (e) {
     throw e;
   }
@@ -365,7 +374,7 @@ async function validate(stackVars, envVars, nj, nodeCfConfig) {
   const cfStack = new CfStack(stackVars[0], envVars, nj, nodeCfConfig);
   await cfStack.validate();
   // recurse:
-  return validate(stackVars.slice(1), envVars, nj, nodeCfConfig)
+  return validate(stackVars.slice(1), envVars, nj, nodeCfConfig);
 }
 
 async function deploy(stackVars, envVars, nj, nodeCfConfig) {
@@ -377,7 +386,7 @@ async function deploy(stackVars, envVars, nj, nodeCfConfig) {
   _.assign(envVars, (await cfStack.deploy()));
   debug('envVars: ', JSON.stringify(envVars));
   // recurse:
-  return deploy(stackVars.slice(1), envVars, nj, nodeCfConfig)
+  return deploy(stackVars.slice(1), envVars, nj, nodeCfConfig);
 }
 
 async function deleteStacks(stackVars, envVars, nj, nodeCfConfig) {
