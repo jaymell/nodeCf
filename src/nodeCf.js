@@ -31,26 +31,31 @@ class CfStack {
       await getAwsCredentials(this.rawStackVars.role || this.envVars.role);
   }
 
-  async uploadTemplate() {
-    await ensureBucket(this.credentials, this.infraBucket);
+  async getAwsClient(clientName) {
+    return new AWS[clientName](this.credentials);
+  }
+
+  async uploadTemplate(cli) {
+    await ensureBucket(cli, this.infraBucket);
     const timestamp = new Date().getTime();
     const s3Location = path.join(this.nodeCfConfig.s3CfTemplateDir,
       `${this.name}-${timestamp}.yml`);
-    return await s3Upload(this.credentials,
-      this.infraBucket, this.template, s3Location);
+    return await s3Upload(cli, this.infraBucket, this.template, s3Location);
   }
 
   async validate() {
     await this.lateInit();
-    const s3Resp = await this.uploadTemplate();
+    const s3Cli = await this.getAwsClient('S3');
+    const cfCli = await this.getAwsClient('CloudFormation');
+    const s3Resp = await this.uploadTemplate(s3Cli);
     debug('s3Resp: ', s3Resp);
-    await validateAwsCfStack(this.credentials, {
+    await validateAwsCfStack(cfCli, {
       TemplateURL: s3Resp.Location,
     });
     console.log(`${this.name} is a valid Cloudformation template`);
   }
 
-  async doLambdaArtifacts(lambdaArtifact) {
+  async doLambdaArtifacts(cli, lambdaArtifact) {
     // render lambda artifact
     // and return its location:
     // FIXME: should be able to handle/return an array, not just
@@ -59,7 +64,7 @@ class CfStack {
       debug('CfStack.deploy: running lambda tasks');
       const lambdaExports = {};
       lambdaArtifact = await this.render(lambdaArtifact);
-      const s3Resp = await uploadLambda(this.credentials, this.infraBucket,
+      const s3Resp = await uploadLambda(cli, this.infraBucket,
         lambdaArtifact, this.nodeCfConfig.s3LambdaDir);
       lambdaExports.bucket = this.infraBucket;
       lambdaExports.key = s3Resp.Key;
@@ -67,12 +72,12 @@ class CfStack {
     }
   }
 
-  async doDependencies(stackDependencies) {
+  async doDependencies(cli, stackDependencies) {
     // render stack dependencies
     stackDependencies = await this.renderList(stackDependencies);
     // run stack dependencies and add them to outputs
     const dependencies = _.chain(await Promise.map(stackDependencies,
-      async(it) => await awsDescribeCfStack(this.credentials, it)))
+      async(it) => await awsDescribeCfStack(cli, it)))
       .forEach(it => {
         it.outputs = unwrapOutputs(it.Outputs);
         // FIXME: the logic for this should go elsewhere:
@@ -101,21 +106,21 @@ class CfStack {
   }
 
   // these only run if stack didn't already exist:
-  async doCreationTasks(tasks, label) {
-    if (!(await awsCfStackExists(this.credentials, this.deployName))) {
+  async doCreationTasks(cli, tasks, label) {
+    if (!(await awsCfStackExists(cli, this.deployName))) {
       await this.doTasks(tasks, label);
     }
   }
 
-  async doStackDeploy() {
+  async doStackDeploy(s3Cli, cfCli) {
     // render and wrap parameters and tags
     const parameters = wrapWith("ParameterKey", "ParameterValue",
       await this.renderObj(this.rawStackVars.parameters));
     const tags = wrapWith("Key", "Value",
       await this.renderObj(this.rawStackVars.tags));
     // deploy stack
-    const s3Resp = await this.uploadTemplate();
-    const stackResp = await ensureAwsCfStack(this.credentials, {
+    const s3Resp = await this.uploadTemplate(s3Cli);
+    const stackResp = await ensureAwsCfStack(cfCli, {
       StackName: this.deployName,
       Parameters: parameters,
       Tags: tags,
@@ -129,21 +134,23 @@ class CfStack {
   async deploy() {
     console.log(`deploying ${this.deployName}`);
     await this.lateInit();
+    const s3Cli = await this.getAwsClient('S3');
+    const cfCli = await this.getAwsClient('CloudFormation');
     const stackExportsObj = {};
     const stackExports = stackExportsObj[this.name] = {};
     // add dependencies to envVars.stacks:
     _.assign(this.envVars.stacks,
-      (await this.doDependencies(this.rawStackVars.stackDependencies)));
+      (await this.doDependencies(cfCli, this.rawStackVars.stackDependencies)));
     // add lambda helpers to stack exports:
     stackExports.lambda =
-      await this.doLambdaArtifacts(this.rawStackVars.lambdaArtifact);
+      await this.doLambdaArtifacts(s3Cli, this.rawStackVars.lambdaArtifact);
     // creation tasks:
-    await this.doCreationTasks(this.rawStackVars.creationTasks,
+    await this.doCreationTasks(cfCli, this.rawStackVars.creationTasks,
       'creationTasks');
     // pre-tasks:
     await this.doTasks(this.rawStackVars.preTasks, 'preTasks');
     // deploy stack:
-    stackExports.outputs = await this.doStackDeploy();
+    stackExports.outputs = await this.doStackDeploy(s3Cli, cfCli);
     // post-tasks:
     await this.doTasks(this.rawStackVars.postTasks, 'postTasks');
     console.log(`deployed ${this.deployName}`);
@@ -151,8 +158,9 @@ class CfStack {
   }
 
   async delete(envVars) {
-    if (await awsCfStackExists(this.credentials, this.deployName)) {
-      const resp = await deleteAwsCfStack(this.credentials, {
+    const cfCli = await this.getAwsClient('CloudFormation');
+    if (await awsCfStackExists(cfCli, this.deployName)) {
+      const resp = await deleteAwsCfStack(cfCli, {
         StackName: this.deployName
       });
       debug(`CfStack.delete: ${JSON.stringify(resp)}`);
@@ -187,8 +195,7 @@ async function getTemplateFile(templateDir, stackName) {
 }
 
 // return promise that resolves to true/false or rejects with error
-async function bucketExists(credentials, bucket) {
-  const cli = new AWS.S3({ credentials: credentials });
+async function bucketExists(cli, bucket) {
   try {
     await cli.headBucket({
       Bucket: bucket
@@ -207,21 +214,19 @@ async function bucketExists(credentials, bucket) {
   }
 }
 
-function createBucket(credentials, bucket) {
-  const cli = new AWS.S3({ credentials: credentials });
+function createBucket(cli, bucket) {
   return cli.createBucket({
     Bucket: bucket
   }).promise();
 }
 
-async function ensureBucket(credentials, bucket) {
-  if (!await bucketExists(credentials, bucket)) {
-    await createBucket(credentials, bucket);
+async function ensureBucket(cli, bucket) {
+  if (!await bucketExists(cli, bucket)) {
+    await createBucket(cli, bucket);
   }
 }
 
-function s3Upload(credentials, bucket, src, dest) {
-  const cli = new AWS.S3({ credentials: credentials });
+function s3Upload(cli, bucket, src, dest) {
   debug(`uploading template ${src} to s3://${path.join(bucket, dest)}`);
   const stream = fs.createReadStream(src);
   return cli.upload({
@@ -231,21 +236,20 @@ function s3Upload(credentials, bucket, src, dest) {
   }).promise();
 }
 
-async function uploadLambda(credentials, bucket, localFile, s3LambdaDir) {
+async function uploadLambda(cli, bucket, localFile, s3LambdaDir) {
   try {
     debug(`uploadLambda: localFile = ${localFile}`);
     const lambdaArtifact =
       `${path.basename(localFile)}.${new Date().getTime()}`;
-    await ensureBucket(credentials, bucket);
-    return await s3Upload(credentials, bucket, localFile,
+    await ensureBucket(cli, bucket);
+    return await s3Upload(cli, bucket, localFile,
       `${s3LambdaDir}/${lambdaArtifact}`);
   } catch (e) {
     throw e;
   }
 }
 
-async function awsCfStackExists(credentials, stackName) {
-  const cli = new AWS.CloudFormation({ credentials: credentials });
+async function awsCfStackExists(cli, stackName) {
   try {
     await cli.describeStacks({
       StackName: stackName
@@ -260,8 +264,7 @@ async function awsCfStackExists(credentials, stackName) {
   }
 }
 
-async function createAwsCfStack(credentials, params) {
-  const cli = new AWS.CloudFormation({ credentials: credentials });
+async function createAwsCfStack(cli, params) {
   console.log(`creating cloudformation stack ${params.StackName}`);
   try {
     const data = await cli.createStack(params).promise();
@@ -279,8 +282,7 @@ async function createAwsCfStack(credentials, params) {
   }
 }
 
-async function updateAwsCfStack(credentials, params) {
-  const cli = new AWS.CloudFormation({ credentials: credentials });
+async function updateAwsCfStack(cli, params) {
   console.log(`updating cloudformation stack ${params.StackName}`);
   try {
     const data = await cli.updateStack(params).promise();
@@ -299,8 +301,7 @@ async function updateAwsCfStack(credentials, params) {
   }
 }
 
-async function awsDescribeCfStack(credentials, stackName) {
-  const cli = new AWS.CloudFormation({ credentials: credentials });
+async function awsDescribeCfStack(cli, stackName) {
   const outputs = await cli.describeStacks({
     StackName: stackName
   }).promise();
@@ -308,19 +309,17 @@ async function awsDescribeCfStack(credentials, stackName) {
 }
 
 // update / create and return its info:
-async function ensureAwsCfStack(credentials, params) {
-  const cli = new AWS.CloudFormation({ credentials: credentials });
-  if (await awsCfStackExists(credentials, params.StackName)) {
-    await updateAwsCfStack(credentials, params);
+async function ensureAwsCfStack(cli, params) {
+  if (await awsCfStackExists(cli, params.StackName)) {
+    await updateAwsCfStack(cli, params);
   } else {
-    await createAwsCfStack(credentials, params);
+    await createAwsCfStack(cli, params);
   }
-  const output = await awsDescribeCfStack(credentials, params.StackName);
+  const output = await awsDescribeCfStack(cli, params.StackName);
   return output;
 }
 
-async function deleteAwsCfStack(credentials, params) {
-  const cli = new AWS.CloudFormation({ credentials: credentials });
+async function deleteAwsCfStack(cli, params) {
   console.log(`deleting cloudformation stack ${params.StackName}`);
   try {
     const resp = await cli.deleteStack(params).promise();
@@ -333,8 +332,7 @@ async function deleteAwsCfStack(credentials, params) {
   }
 }
 
-async function validateAwsCfStack(credentials, params) {
-  const cli = new AWS.CloudFormation({ credentials: credentials });
+async function validateAwsCfStack(cli, params) {
   try {
     const data = await cli.validateTemplate(params).promise();
   } catch (e) {
