@@ -5,58 +5,46 @@ const templater = require('../src/templater.js');
 const nodeCf = rewire('../src/nodeCf.js');
 const Promise = require('bluebird');
 
-const AWS = require('aws-sdk-mock');
-AWS.Promise = Promise.Promise;
-
 var bucketExists = nodeCf.__get__('bucketExists');
 var ensureBucket = nodeCf.__get__('ensureBucket');
 const wrapWith = nodeCf.__get__('wrapWith');
 const getTemplateFileOrig = nodeCf.__get__('getTemplateFile');
 
-describe('bucketExists', function() {
-  before(() =>
-    { AWS.mock('S3', 'headBucket', (params, cb) => cb({ statusCode: 403 }));
-  });
-
-  it('should throw if 403 status', function() {
+describe('bucketExists', () => {
+  it('should throw if 403 status', () => {
     // XXX: is this the best way to test a Promise rejection?
-    return bucketExists({}, 'testBucket')
+    const cli = {};
+    cli.headBucket = () =>
+      ({ promise: () => Promise.reject({ statusCode: 403 })});
+
+    return bucketExists(cli, 'testBucket')
       .catch(e =>
         assert.equal(e.message,
           '403: You don\'t have permissions to access this bucket'));
   });
 
-  after(() => AWS.restore('S3', 'headBucket'));
-});
+  it('should return false if 404', () => {
+    const cli = {};
+    cli.headBucket = () =>
+      ({ promise: () => Promise.reject({ statusCode: 404 })});
 
-describe('bucketExists', function() {
-  before(function() { AWS.mock('S3', 'headBucket',
-    (params, cb) => cb({ statusCode: 404 }));
-  });
-
-  it('should return false if 404', function() {
-    return bucketExists({}, 'testBucket')
+    return bucketExists(cli, 'testBucket')
       .then(r => assert.equal(false, r));
   });
 
-  after(() => AWS.restore('S3', 'headBucket'));
-});
+  it('should resolve to true if no exception thrown', () => {
+    const cli = {};
+    cli.headBucket = () =>
+      ({ promise: () => Promise.resolve(null)});
 
-describe('bucketExists', function() {
-  before(function() { AWS.mock('S3', 'headBucket',
-    (params, cb) => cb(null));
-  });
-
-  it('should resolve to true if no exception thrown', function() {
-    return bucketExists({}, 'testBucket')
+    return bucketExists(cli, 'testBucket')
       .then(r => assert.equal(true, r));
   });
 
-  after(() => AWS.restore('S3', 'headBucket'));
 });
 
-describe('test parameter wrapping', function() {
-  it('input key/value pairs should return wrapped array', function() {
+describe('test parameter wrapping', () => {
+  it('input key/value pairs should return wrapped array', () => {
     const output = [
       {"ParameterKey": "Key1", "ParameterValue": "Value1"},
       {"ParameterKey": "Key2", "ParameterValue": "Value2"},
@@ -70,7 +58,7 @@ describe('test parameter wrapping', function() {
   });
 });
 
-describe('CfStack', function() {
+describe('CfStack', () => {
   const envVars = {
     environment: 'testEnv',
     application: 'testApp',
@@ -83,16 +71,14 @@ describe('CfStack', function() {
     environment: "{{environment}}"
   };
   const nodeCfCfg = config.loadNodeCfConfig('testEnv');
-  it('should instantiate successfully', () => {
-    const stack = new nodeCf.CfStack(stackVars, nodeCfCfg);
-  });
+  it('should instantiate successfully', () =>
+    new nodeCf.CfStack(stackVars, nodeCfCfg));
 });
 
 describe('CfStack', function() {
-  before(function() {
-    nodeCf.__set__('getTemplateFile', () =>
-      Promise.resolve('./templates/test.json'));
-  });
+  before(() => nodeCf.__set__('getTemplateFile', () =>
+    Promise.resolve('./templates/test.json')));
+
   const envVars = {
     environment: 'testEnv',
     application: 'testApp',
@@ -106,9 +92,7 @@ describe('CfStack', function() {
     preTasks: ["ls", "echo"]
   };
   const nodeCfCfg = config.loadNodeCfConfig('testEnv');
-  after(function() {
-    nodeCf.__set__('getTemplateFile', getTemplateFileOrig);
-  });
+  after(() => nodeCf.__set__('getTemplateFile', getTemplateFileOrig));
 });
 
 describe('unwrapOutputs', () => {

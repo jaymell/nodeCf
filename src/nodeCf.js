@@ -22,13 +22,18 @@ class CfStack {
       `${envVars.environment}-${envVars.application}-${this.name}`;
   }
 
+  async getAwsCredentials() {
+    const creds =
+      await getAwsCredentials(this.rawStackVars.role || this.envVars.role);
+    return creds;
+  }
+
   async lateInit() {
     this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir,
       this.rawStackVars.templateName || this.rawStackVars.name);
     // if role defined at stack level, use that, otherwise
     // use one at environment level (which itself could be undefined):
-    this.credentials =
-      await getAwsCredentials(this.rawStackVars.role || this.envVars.role);
+    this.credentials = this.getAwsCredentials();
   }
 
   async getAwsClient(clientName) {
@@ -133,11 +138,14 @@ class CfStack {
 
   async deploy() {
     console.log(`deploying ${this.deployName}`);
+
     await this.lateInit();
+
     const s3Cli = await this.getAwsClient('S3');
     const cfCli = await this.getAwsClient('CloudFormation');
     const stackExportsObj = {};
     const stackExports = stackExportsObj[this.name] = {};
+
     // add dependencies to envVars.stacks:
     _.assign(this.envVars.stacks,
       (await this.doDependencies(cfCli, this.rawStackVars.stackDependencies)));
@@ -153,11 +161,13 @@ class CfStack {
     stackExports.outputs = await this.doStackDeploy(s3Cli, cfCli);
     // post-tasks:
     await this.doTasks(this.rawStackVars.postTasks, 'postTasks');
+
     console.log(`deployed ${this.deployName}`);
+
     return stackExports;
   }
 
-  async delete(envVars) {
+  async delete() {
     const cfCli = await this.getAwsClient('CloudFormation');
     if (await awsCfStackExists(cfCli, this.deployName)) {
       const resp = await deleteAwsCfStack(cfCli, {
@@ -375,16 +385,16 @@ async function validate(stackVars, envVars, nj, nodeCfConfig) {
   return validate(stackVars.slice(1), envVars, nj, nodeCfConfig);
 }
 
-async function deploy(stackVars, envVars, nj, nodeCfConfig) {
-  if (_.isEmpty(stackVars)) return envVars;
+async function deploy(stackVarsList, envVars, nj, nodeCfConfig) {
+  if (_.isEmpty(stackVarsList)) return envVars;
   if (_.isUndefined(envVars.stacks) ) envVars.stacks = {};
-  const cfStack = new CfStack(stackVars[0], envVars, nj, nodeCfConfig);
+  const cfStack = new CfStack(stackVarsList[0], envVars, nj, nodeCfConfig);
   // merge envVars.stacks with stack outputs returned after deploying
   // individual stack:
   _.assign(envVars, (await cfStack.deploy()));
   debug('envVars: ', JSON.stringify(envVars));
   // recurse:
-  return deploy(stackVars.slice(1), envVars, nj, nodeCfConfig);
+  return deploy(stackVarsList.slice(1), envVars, nj, nodeCfConfig);
 }
 
 async function deleteStacks(stackVars, envVars, nj, nodeCfConfig) {

@@ -25,7 +25,6 @@ describe('getTemplateFile', function() {
   });
 });
 
-
 describe('getTemplateFile', function() {
   before(function() {
     sinon.stub(utils, 'fileExists').callsFake(function(f) {
@@ -44,7 +43,6 @@ describe('getTemplateFile', function() {
   });
 });
 
-
 describe('getTemplateFile', function() {
   before(function() {
     sinon.stub(utils, 'fileExists').callsFake(function(f) {
@@ -62,7 +60,6 @@ describe('getTemplateFile', function() {
   	utils.fileExists.restore();
   });
 });
-
 
 describe('getTemplateFile', function() {
   before(function() {
