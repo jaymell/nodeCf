@@ -17,14 +17,14 @@ npm install --save 'https://github.com/jaymell/nodeCf.git#v.9.7.1'
 
 ### Usage
 ```
-node_modules/.bin/nodeCf [ ACTION ] -e,--environment <ENVIRONMENT> [-s,--stacks <STACK NAMES>] [ -r <REGION> ] [ -p <PROFILE> ] [ -x, --extra-vars <EXTRA VARS> ]
+node_modules/.bin/nodeCf [ ACTION ] -e,--environment <ENVIRONMENT> -r <REGION>  [-s,--stacks <STACK NAMES>] [ -p <PROFILE> ] [ -x, --extra-vars <EXTRA VARS> ]
 ```
 
 Run deployment against specified ENVIRONMENT.
 
 * ENVIRONMENT should match name of environment file
 * ACTION defaults to 'deploy': choices are 'deploy', 'delete', and 'validate'
-* REGION specifies the desired AWS Region. Currently defaults to 'us-east-1'
+* REGION specifies the desired AWS Region and currently must be passed at runtime
 * PROFILE specifies an optional name for an AWS profile to assume when running the job
 * STACK NAME corresponds to the name of your Cloudformation templates, separated by commas if multiple
 * EXTRA VARS indicate extra variables for deployment; useful for any variables that are only known at runtime; in the form "KEY=VALUE" -- additional variables should be separated by spaces
@@ -45,7 +45,7 @@ Example:
 ### Config Files
 Config files must be written in yaml and by default are looked for in `./config`
 * Environment Config File (Required): Stores environment-specific variables  -- e.g., `./config/dev.yml`
-* Global config file (Required -- but maybe should be optional): Stores application- (but not environment-) specific variables -- e,g, `./config/global.yml`
+* Global config file (Optional): Stores variables common to all environments -- e,g, `./config/global.yml`
 * Stack configuration (Required) -- Defines parameters and tags to pass to Cloudformation, as well as pre-and post-tasks (see below for more info)
 * NodeCf configuration (Optional) -- This feature doesn't actually exist yet, but should allow for overriding variables that get set in the `config` module
 
@@ -126,7 +126,7 @@ stacks:
   parameters:
     PrivateSubnet0: "{{stacks.network.outputs.PrivateSubnet0}}"
     PrivateSubnet1: "{{stacks.network.outputs.PrivateSubnet1}}"
-  stackDependencies: 
+  stackDependencies:
   - "{{environment}}-{{application}}-network"
 ```
 
@@ -156,14 +156,14 @@ stacks:
 Note that you're not limited to shell scripts -- these can be any scripts in any language, provided the system deploying the stacks has the proper tools installed.
 
 #### Lambda Artifacts
-Deploying Lambda functions via Cloudformation can be a pain. 
+Deploying Lambda functions via Cloudformation can be a pain.
 1. The code must be built and packaged (which is _not_ handled here) or if not a compiled language, embedded directly within the Cloudformation template
-2. uploaded to s3 with a unique name (if the name of the artifact doesn't change with subsequent deployments, your code won't be updated) 
-3. the location in s3 must be passed to the actual CF template in which the Lambda function is defined. 
+2. uploaded to s3 with a unique name (if the name of the artifact doesn't change with subsequent deployments, your code won't be updated)
+3. the location in s3 must be passed to the actual CF template in which the Lambda function is defined.
 
 NodeCf offers a few helpers to make these steps a bit easier.
 
-Assuming you've built and packaged your lambda function into an artifact, e.g., a zip file, you can specify the path to it under a `lambdaArtifact` property, then reference its location with `{{lambda.<Stack Name>.bucket}}` and `{{lambda.<Stack Name>.key}}`. NodeCf will handle uploading it to s3 with a unique name.
+Assuming you've built and packaged your lambda function into an artifact, e.g., a zip file, you can specify the path to it under a `lambdaArtifact` property, then reference its location with `{{lambda.bucket}}` and `{{lambda.key}}`. NodeCf will handle uploading it to s3 with a unique name.
 
 For example:
 ```
@@ -171,13 +171,10 @@ stacks:
 - name: myLambdaStack
   lambdaArtifact: ./lambda/dist/myLambda.zip
   parameters:
-    LambdaBucket: "{{lambda.myLambdaStack.bucket}}"
-    LambdaKey: "{{lambda.myLambdaStack.key}}"
+    LambdaBucket: "{{lambda.bucket}}"
+    LambdaKey: "{{lambda.key}}"
 ```
 
 ### TO DO
 * (Optionally) delete templates from s3 after deployment
-* Use change sets
-* Make it easy to set stack update policies
 * Add example project
-* Make global vars optional -- and perhaps call them 'globalVars' or 'baseVars' instead 
