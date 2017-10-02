@@ -66,13 +66,14 @@ class CfStack {
     // FIXME: should be able to handle/return an array, not just
     // a single lambda
     if (!(_.isUndefined(lambdaArtifact))) {
-      debug('CfStack.deploy: running lambda tasks');
+      debug('CfStack.doLambdaArtifacts: running lambda tasks');
       const lambdaExports = {};
-      lambdaArtifact = await this.render(lambdaArtifact);
+      lambdaArtifact = await this.renderObj(lambdaArtifact);
       const s3Resp = await uploadLambda(cli, this.infraBucket,
         lambdaArtifact, this.nodeCfConfig.s3LambdaDir);
       lambdaExports.bucket = this.infraBucket;
       lambdaExports.key = s3Resp.Key;
+      debug(`cfStack.doLambdaArtifacts: ${JSON.stringify(lambdaExports)}`);
       return lambdaExports;
     }
   }
@@ -94,12 +95,16 @@ class CfStack {
     return dependencies;
   }
 
-  async renderList(vars) {
-    return templater.renderList(this.nj, vars, this.envVars);
+  async renderList(vars, extraRenderVars) {
+    // pass in optional extra vars to be used for rendering:
+    return templater.renderList(this.nj, vars,
+      _.merge(this.envVars, extraRenderVars));
   }
 
-  async renderObj(vars) {
-    return templater.renderObj(this.nj, vars, this.envVars);
+  async renderObj(vars, extraRenderVars) {
+    // pass in optional extra vars to be used for rendering:
+    return templater.renderObj(this.nj, vars,
+      _.merge(this.envVars, extraRenderVars));
   }
 
   async doTasks(tasks, label) {
@@ -117,10 +122,11 @@ class CfStack {
     }
   }
 
-  async doStackDeploy(s3Cli, cfCli) {
+  async doStackDeploy(s3Cli, cfCli, lambdaVars) {
     // render and wrap parameters and tags
+    debug(`CfStack.doStackDeploy: ${JSON.stringify(lambdaVars)}`);
     const parameters = wrapWith("ParameterKey", "ParameterValue",
-      await this.renderObj(this.rawStackVars.parameters));
+      await this.renderObj(this.rawStackVars.parameters, lambdaVars));
     const tags = wrapWith("Key", "Value",
       await this.renderObj(this.rawStackVars.tags));
     // deploy stack
@@ -145,12 +151,13 @@ class CfStack {
     const cfCli = await this.getAwsClient('CloudFormation');
     const stackExportsObj = {};
     const stackExports = stackExportsObj[this.name] = {};
+    const lambdaVars = {};
 
     // add dependencies to envVars.stacks:
     _.assign(this.envVars.stacks,
       (await this.doDependencies(cfCli, this.rawStackVars.stackDependencies)));
     // add lambda helpers to stack exports:
-    stackExports.lambda =
+    lambdaVars.lambda =
       await this.doLambdaArtifacts(s3Cli, this.rawStackVars.lambdaArtifact);
     // creation tasks:
     await this.doCreationTasks(cfCli, this.rawStackVars.creationTasks,
@@ -158,7 +165,7 @@ class CfStack {
     // pre-tasks:
     await this.doTasks(this.rawStackVars.preTasks, 'preTasks');
     // deploy stack:
-    stackExports.outputs = await this.doStackDeploy(s3Cli, cfCli);
+    stackExports.outputs = await this.doStackDeploy(s3Cli, cfCli, lambdaVars);
     // post-tasks:
     await this.doTasks(this.rawStackVars.postTasks, 'postTasks');
 

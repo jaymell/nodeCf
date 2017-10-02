@@ -106,7 +106,7 @@ async function main() {
   try {
     // concatenate variables, with env-specific overriding global,
     // then render and validate:
-    envVars = await config.loadEnvConfig(nj, _.assign(globalVars,
+    envVars = await config.loadEnvConfig(nj, _.merge(globalVars,
         envVars,
         { environment: args.environment, region: args.region },
         args.extraVars),
