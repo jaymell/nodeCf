@@ -52,7 +52,7 @@ Config files must be written in yaml and by default are looked for in `./config`
 ### Required variables:
 * environment -- this must be passed on command line as first argument to command; its name must match the name of your environment variables file
 * stacks -- these must either be passed on command line or defined in your environments file(s); it is an array of stacks which must be run -- order matters
-* region -- this must be passed on command line; currently defaults to us-east-1 if not specified
+* region -- this must be passed on command line
 * account -- your AWS account number
 * application -- this can be anything, but the name of your repository is a good default; it is used for naming and uniquely identifying resources
 * infraBucket -- Cloudformation stacks over a certain size must first be uploaded to s3; as a result, nodeCf requires the name of a bucket to use for deployments; the scripts will handle creating it for you (assuming its name has not already been taken by some other random AWS user).
@@ -174,6 +174,24 @@ stacks:
     LambdaBucket: "{{lambda.bucket}}"
     LambdaKey: "{{lambda.key}}"
 ```
+
+### Credentials
+In addition to being able to use an AWS credentials profile, NodeCf can handle deployment via role assumption. Roles can be defined by specifying the ARN of the role to assume in one of two places:
+
+* at the 'environment' level
+Define a variable called 'role' on the command line or in your environment-specific or global config file.
+
+* on a per-stack basis
+You can assume a role on a per-stack basis by adding a 'role' parameter to a stack object, for example:
+
+```
+- name: network
+  templateName: mynetwork
+  role: "arn:aws:iam::{{myAwsAccountNumber}}:role/myRole"
+  parameters:
+    VpcIPRange: "{{VpcIPRange}}"
+```
+
 
 ### TO DO
 * (Optionally) delete templates from s3 after deployment
