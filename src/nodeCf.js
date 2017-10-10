@@ -22,9 +22,9 @@ class CfStack {
       `${envVars.environment}-${envVars.application}-${this.name}`;
   }
 
-  async getAwsCredentials() {
-    const creds =
-      await getAwsCredentials(this.rawStackVars.role || this.envVars.role);
+  async getAwsCredentials(role) {
+    debug(`CfStack.getAwsCredentials -- role: ${role}`);
+    const creds = await getAwsCredentials(role);
     return creds;
   }
 
@@ -33,11 +33,18 @@ class CfStack {
       this.rawStackVars.templateName || this.rawStackVars.name);
     // if role defined at stack level, use that, otherwise
     // use one at environment level (which itself could be undefined):
-    this.credentials = this.getAwsCredentials();
+    const rawRole = this.rawStackVars.role || this.envVars.role;
+    // ensure any template vars in role are processed:
+    if (!(_.isUndefined(rawRole))) var role = await this.renderObj(rawRole);
+    this.credentials = await this.getAwsCredentials(role);
   }
 
   async getAwsClient(clientName) {
-    return new AWS[clientName](this.credentials);
+    const creds = this.credentials;
+    if(_.isUndefined(creds)) {
+      return new AWS[clientName]();
+    }
+    return new AWS[clientName]({credentials: creds});
   }
 
   async uploadTemplate(cli) {
@@ -175,6 +182,7 @@ class CfStack {
   }
 
   async delete() {
+    await this.lateInit();
     const cfCli = await this.getAwsClient('CloudFormation');
     if (await awsCfStackExists(cfCli, this.deployName)) {
       const resp = await deleteAwsCfStack(cfCli, {
@@ -267,6 +275,7 @@ async function uploadLambda(cli, bucket, localFile, s3LambdaDir) {
 }
 
 async function awsCfStackExists(cli, stackName) {
+  debug(`awsCfStackExists: stackName = ${stackName}`);
   try {
     await cli.describeStacks({
       StackName: stackName
@@ -276,6 +285,7 @@ async function awsCfStackExists(cli, stackName) {
     if (e.message.includes('does not exist')) {
       return false;
     } else {
+      console.error(`Failed at cli.describeStacks({StackName=${stackName}})`);
       throw e;
     }
   }
@@ -364,24 +374,37 @@ function configAws(params) {
     });
     AWS.config.credentials = credentials;
   }
-
   AWS.config.update({
     region: params.region
   });
 }
 
-async function getAwsCredentials(role) {
-  // this effectively means that all clients
-  // will depend on profile or environment-
-  // obtained credentials rather than role assumption:
-  if (_.isUndefined(role)) return undefined;
-  credentials = new AWS.TemporaryCredentials({
+async function getAwsRoleCreds(role, masterCreds) {
+  const creds = new AWS.TemporaryCredentials({
     RoleArn: role
-  });
+  }, masterCreds);
   // laziness of temp credentials causes problems
   // if this not done:
-  await credentials.refresh();
-  return credentials;
+  await creds.refreshPromise();
+  debug(`getAwsRoleCreds: creds = ${JSON.stringify(creds)}`);
+  return creds;
+}
+
+async function getAwsCredentials(role) {
+  const credentialProviderChain = new AWS.CredentialProviderChain();
+  // if AWS.config.credentials is NOT null, it means
+  // a file-system profile has been used, so just leave creds
+  // undefined so that is used as default credentials:
+  if(_.isNull(AWS.config.credentials)) {
+    var creds = await credentialProviderChain.resolvePromise();
+  }
+  // if no role passed, return default credentials:
+  if (_.isUndefined(role)) {
+    debug(`getAwsCredentials: creds = ${JSON.stringify(creds)}`);
+    return creds;
+  }
+  // else assume role:
+  return getAwsRoleCreds(role, creds);
 }
 
 async function validate(stackVars, envVars, nj, nodeCfConfig) {
