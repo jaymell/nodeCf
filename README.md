@@ -132,7 +132,16 @@ stacks:
 
 In order to use the outputs from the network stack in the rds stack, declare the dependency on the fully-qualified name of the network stack in `stackDependencies`, then reference the name of the output variable as `stacks.outputs.<Variable Name>`.
 
-Note: You have to declare the proper variables in the `Outputs` section of the `network` Cloudformation template.
+If you need to use stack outputs of the _current_ stack (e.g., if you want to use the outputs of the stack you just deployed in a post-task), it will not be stored in `stacks` object, you should instead reference the `outputs` object directly:
+
+```
+stacks:
+- name: network
+  parameters:
+    VpcIPRange: "{{VpcIPRange}}"
+  postTasks:
+  - echo "{{outputs.PrivateSubnet0}}" # echo the stack's PrivateSubnet0 output to the console
+```
 
 #### Pre-Tasks, Post-Tasks and Creation Tasks
 If you consistently need to run an arbitrary shell script or command immediately prior to or after deploying a CF template, you can add it under `preTasks` or `postTasks`, which consists of an array of shell-interpreted strings. If you only need to run a script when a stack is first created, you can call it under `creationTasks`. For example:

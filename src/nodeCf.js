@@ -117,9 +117,17 @@ class CfStack {
   async doTasks(tasks, label) {
     // render and run tasks
     debug(`CfStack.doTasks: calling ${label}`);
-    const creationTasks = await this.renderList(tasks);
-    await utils.execTasks(tasks, label);
+    const renderedTasks = await this.renderList(tasks);
+    await utils.execTasks(renderedTasks, label);
     debug(`CfStack.doTasks: returning from ${label}`);
+  }
+
+  async doPostTasks(tasks, stackExports, label) {
+    // render and run tasks
+    debug(`CfStack.doPostTasks: calling ${label}`);
+    const renderedTasks = await this.renderList(tasks, stackExports);
+    await utils.execTasks(renderedTasks, label);
+    debug(`CfStack.doPostTasks: returning from ${label}`);
   }
 
   // these only run if stack didn't already exist:
@@ -174,7 +182,7 @@ class CfStack {
     // deploy stack:
     stackExports.outputs = await this.doStackDeploy(s3Cli, cfCli, lambdaVars);
     // post-tasks:
-    await this.doTasks(this.rawStackVars.postTasks, 'postTasks');
+    await this.doPostTasks(this.rawStackVars.postTasks, stackExports, 'postTasks');
 
     console.log(`deployed ${this.deployName}`);
 
