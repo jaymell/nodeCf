@@ -106,10 +106,13 @@ function filterStacks(stacks, stackFilters) {
 }
 
 // render and validate config
-async function loadEnvConfig(nj, envVars, schema) {
-  debug('loadEnvConfig: envVars before render: ', envVars);
-  envVars = await templater.renderObj(nj, envVars);
-  debug('loadEnvConfig: envVars after render: ', envVars);
+// with subsequent vars overriding
+// prior vars:
+async function loadEnvConfig(nj, schema, ...vars) {
+  const assignedVars = _.assign({}, ...vars);
+  debug('loadEnvConfig: vars before render: ', assignedVars);
+  const envVars = await templater.renderObj(nj, assignedVars);
+  debug('loadEnvConfig: vars after render: ', envVars);
   if (!(isValidJsonSchema(schema, envVars))) {
     throw new Error('Environment config failed schema validation');
   }

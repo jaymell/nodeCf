@@ -1,5 +1,9 @@
 const assert = require('assert');
-const config = require('../src/config.js');
+const rewire = require("rewire");
+const config = rewire('../src/config.js');
+const templater = rewire('../src/templater.js');
+
+const isValidJsonSchemaOrg = config.__get__('isValidJsonSchema');
 
 describe('filterStacks', () => {
   const mockStacks = {
@@ -97,4 +101,18 @@ describe('parseArgs', () => {
     const myArgs = { _: [], e: true, region: 'us-east-1' };
     assert.throws(() => config.parseArgs(myArgs), /No environment passed/);
   });
+});
+
+
+describe('loadEnvConfig', function() {
+  before(() => config.__set__('isValidJsonSchema', () => true));
+
+  it('should override previous vars with subsequent ones', () => {
+    const nj = templater.loadNjEnv();
+    return config.loadEnvConfig(nj, {}, {testVar1: 1}, {testVar1: 2})
+      .then(d => assert.deepEqual(d.testVar1, 2));
+  });
+
+  const nodeCfCfg = config.loadNodeCfConfig('testEnv');
+  after(() => config.__set__('isValidJsonSchema', isValidJsonSchemaOrg));
 });
