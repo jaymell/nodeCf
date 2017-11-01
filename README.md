@@ -42,7 +42,13 @@ Example:
     VpcIPRange: "{{VpcIPRange}}"
 ```
 
-### Config Files
+### Configuration
+Configuration parameters are rendered with the following order of precedence, with highest precedence listed first:
+* "Extra vars" passed on the command line
+* System environment variables
+* Environment-specific config file
+* Global config file
+
 Config files must be written in yaml and by default are looked for in `./config`
 * Environment Config File (Required): Stores environment-specific variables  -- e.g., `./config/dev.yml`
 * Global config file (Optional): Stores variables common to all environments -- e,g, `./config/global.yml`

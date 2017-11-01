@@ -104,13 +104,18 @@ async function main() {
   }
 
   try {
-    // concatenate variables, with env-specific overriding global,
-    // then render and validate:
-    envVars = await config.loadEnvConfig(nj, _.merge(globalVars,
-        envVars,
-        { environment: args.environment, region: args.region },
-        args.extraVars),
-      schema.envConfigSchema);
+    // concatenate variables,
+    // cli-passed vars override
+    // environment variables override
+    // environment config file variables override
+    // global config file variables:
+    envVars = await config.loadEnvConfig(nj,
+      schema.envConfigSchema,
+      globalVars,
+      envVars,
+      { environment: args.environment, region: args.region },
+      process.env,
+      args.extraVars);
   } catch (e) {
     console.log('Invalid environment configuration: ', e);
     process.exit(1);

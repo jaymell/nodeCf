@@ -182,7 +182,8 @@ class CfStack {
     // deploy stack:
     stackExports.outputs = await this.doStackDeploy(s3Cli, cfCli, lambdaVars);
     // post-tasks:
-    await this.doPostTasks(this.rawStackVars.postTasks, stackExports, 'postTasks');
+    await this.doPostTasks(this.rawStackVars.postTasks,
+      stackExports, 'postTasks');
 
     console.log(`deployed ${this.deployName}`);
 
