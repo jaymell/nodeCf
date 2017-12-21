@@ -57,6 +57,9 @@ const cfStackConfigSchema = {
         type: "string"
       }
     },
+    timeout: {
+      type: "number"
+    },
   },
   required: ["name"]
 };

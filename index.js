@@ -123,7 +123,7 @@ async function main() {
 
   try {
 
-    // stacks passed on cli can override stacks defined on env file
+    // stacks passed in cli can override stacks defined in env file
     let stackFilters = args.stackFilters || envVars.stacks;
 
     stackVars = config.filterStacks(

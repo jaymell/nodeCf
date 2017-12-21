@@ -22,8 +22,11 @@ function loadNodeCfConfig(environment, cfg) {
     defaultTags: {
       environment: environment,
       application: "{{application}}"
-    }
+    },
+    timeout: 45,
+    capabilities: [ 'CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM' ]
   };
+
 
   return _.merge(defaults, cfg);
 }
