@@ -6,14 +6,19 @@ const templater = require('./templater.js');
 const debug = require('debug')('config');
 const fs = Promise.promisifyAll(require('fs'));
 
-async function loadStacks(stackCfg, stackFilters, schema, stackDefaults) {
-  const stacks = filterStacks(
+async function loadStackYaml(stackCfg, stackFilters) {
+  return filterStacks(
     yaml.safeLoad(
       await fs.readFileAsync(
         stackCfg)
     ),
     stackFilters
   );
+}
+
+async function loadStacks(stackCfg, stackFilters, schema, stackDefaults) {
+
+  const stacks = await loadStackYaml(stackCfg, stackFilters);
 
   // if no stacks exist or no stacks match filter:
   if (stacks.length == 0) {
@@ -25,7 +30,7 @@ async function loadStacks(stackCfg, stackFilters, schema, stackDefaults) {
     .map(stack => _.assign({}, stackDefaults, stack))
     // validate stack vars
     .map((stack) => {
-      if (!config.isValidJsonSchema(schema, stack))
+      if (!isValidJsonSchema(schema, stack))
         throw new Error('Stack config file is invalid!');
       return stack
     }).value();
