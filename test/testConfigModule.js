@@ -69,7 +69,7 @@ describe('loadNodeCfConfig', () => {
   it('should return defaults if nothing passed', () => {
     const nodeCfCfg = config.loadNodeCfConfig('testEnv');
     assert.equal(nodeCfCfg.localCfTemplateDir, './templates');
-    assert.equal(nodeCfCfg.defaultTags.environment, 'testEnv');
+    assert.equal(nodeCfCfg.stackDefaults. tags.environment, 'testEnv');
   });
 });
 
@@ -103,8 +103,7 @@ describe('parseArgs', () => {
   });
 });
 
-
-describe('loadEnvConfig', function() {
+describe('loadEnvConfig', () => {
   before(() => config.__set__('isValidJsonSchema', () => true));
 
   it('should override previous vars with subsequent ones', () => {
@@ -116,3 +115,17 @@ describe('loadEnvConfig', function() {
   const nodeCfCfg = config.loadNodeCfConfig('testEnv');
   after(() => config.__set__('isValidJsonSchema', isValidJsonSchemaOrg));
 });
+
+describe('loadStacks', () => {
+  before(() => config.__set__('isValidJsonSchema', () => true));
+  it('should throw if empty object passed', () => {
+    return config.loadStacks({}, [], {}, {})
+      .then(() => new Error('unexpected resolve'))
+      .catch(e => {
+        if (e.message !== 'inxvalid stack argument') {
+          throw e;
+        }
+      });
+  });
+});
+

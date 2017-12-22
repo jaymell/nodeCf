@@ -60,6 +60,12 @@ const cfStackConfigSchema = {
     timeout: {
       type: "number"
     },
+    capabilities: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    },
   },
   required: ["name"]
 };
