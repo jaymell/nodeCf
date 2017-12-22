@@ -25,7 +25,7 @@ function usage() {
 
 async function main() {
 
-  var args, nodeCfCfg, nj, globalVars, envVars;
+  var args, nodeCfCfg, nj, globalVars, envVars, stacks;
 
   try {
     args = config.parseArgs(
@@ -122,33 +122,12 @@ async function main() {
   }
 
   try {
-
-    // stacks passed on cli can override stacks defined on env file
+    // stacks passed in cli can override stacks defined in env file
     let stackFilters = args.stackFilters || envVars.stacks;
-
-    stackVars = config.filterStacks(
-      yaml.safeLoad(
-        await fs.readFileAsync(
-          nodeCfCfg.stackCfg)
-      ),
-      stackFilters
-    );
-
-    // if no stacks exist or no stacks match filter:
-    if (stackVars.length == 0) {
-      throw new Error('invalid stack argument');
-    }
-
-    // add default tags:
-    _.forEach(stackVars, stack => {
-      stack.tags = _.assign(nodeCfCfg.defaultTags, stack.tags);
-    });
-
-    // validate stackVars:
-    _.forEach(stackVars, (v, k) => {
-      if (!config.isValidJsonSchema(schema.cfStackConfigSchema, v))
-        throw new Error('Stack config file is invalid!');
-    });
+    stacks = await config.loadStacks(nodeCfCfg.stackCfg,
+      stackFilters,
+      schema.cfStackConfigSchema,
+      nodeCfCfg.stackDefaults);
   } catch (e) {
     console.log(`Failed to load stack config: `, e);
     process.exit(1);
@@ -172,7 +151,7 @@ async function main() {
   switch (args.action) {
     case 'deploy':
       try {
-        await nodeCf.deploy(stackVars, envVars, nj, nodeCfCfg);
+        await nodeCf.deploy(stacks, envVars, nj, nodeCfCfg);
       } catch (e) {
         console.log(`deployment failed: `, e);
         process.exit(1);
@@ -180,7 +159,7 @@ async function main() {
       break;
     case 'validate':
       try {
-        await nodeCf.validate(stackVars, envVars, nj, nodeCfCfg);
+        await nodeCf.validate(stacks, envVars, nj, nodeCfCfg);
       } catch (e) {
         console.log(`validation failed: `, e);
         process.exit(1);
@@ -189,7 +168,7 @@ async function main() {
     case 'delete':
       try {
         // note that stack order is reversed prior to deletion:
-        await nodeCf.deleteStacks(stackVars.reverse(), envVars, nj, nodeCfCfg);
+        await nodeCf.deleteStacks(stacks.reverse(), envVars, nj, nodeCfCfg);
       } catch (e) {
         console.log(`delete failed: `, e);
         process.exit(1);

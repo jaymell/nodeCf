@@ -4,6 +4,7 @@ const config = rewire('../src/config.js');
 const templater = rewire('../src/templater.js');
 
 const isValidJsonSchemaOrg = config.__get__('isValidJsonSchema');
+const loadStackYamlOrg = config.__get__('loadStackYaml');
 
 describe('filterStacks', () => {
   const mockStacks = {
@@ -69,7 +70,7 @@ describe('loadNodeCfConfig', () => {
   it('should return defaults if nothing passed', () => {
     const nodeCfCfg = config.loadNodeCfConfig('testEnv');
     assert.equal(nodeCfCfg.localCfTemplateDir, './templates');
-    assert.equal(nodeCfCfg.defaultTags.environment, 'testEnv');
+    assert.equal(nodeCfCfg.stackDefaults. tags.environment, 'testEnv');
   });
 });
 
@@ -103,8 +104,8 @@ describe('parseArgs', () => {
   });
 });
 
+describe('loadEnvConfig', () => {
 
-describe('loadEnvConfig', function() {
   before(() => config.__set__('isValidJsonSchema', () => true));
 
   it('should override previous vars with subsequent ones', () => {
@@ -115,4 +116,78 @@ describe('loadEnvConfig', function() {
 
   const nodeCfCfg = config.loadNodeCfConfig('testEnv');
   after(() => config.__set__('isValidJsonSchema', isValidJsonSchemaOrg));
+});
+
+describe('loadStacks', () => {
+  before(() => {
+    config.__set__({
+      isValidJsonSchema: () => true,
+      loadStackYaml: () => []
+    });
+  });
+  it('should throw if empty object passed', () => {
+    return config.loadStacks({}, [], {}, {})
+      .then(() => new Error('unexpected resolve'))
+      .catch(e => {
+        if (e.message !== 'invalid stack argument') {
+          throw e;
+        }
+    });
+  });
+  after(() => config.__set__({
+    isValidJsonSchema: isValidJsonSchemaOrg,
+    loadStackYaml: loadStackYamlOrg
+  }));
+});
+
+describe('loadStacks', () => {
+  // should match config.loadNodeCfConfig
+  const stackDefaults = {
+    capabilities: [ 'CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM' ],
+    timeout: 45,
+    tags: {
+      environment: "testEnv",
+      application: "{{application}}"
+    }
+  };
+
+  it('should return defaults if nothing else specified', () => {
+    const testStack = { name: 'testStack' };
+    config.__set__({
+      isValidJsonSchema: () => true,
+      loadStackYaml: () => [ testStack ]
+    });
+    return config.loadStacks({}, [], {}, stackDefaults)
+      .then(it => {
+        assert.deepEqual(it[0].tags, stackDefaults.tags)
+        assert.deepEqual(it[0].timeout, stackDefaults.timeout)
+        assert.deepEqual(it[0].capabilities, stackDefaults.capabilities)
+      })
+      .then(() => config.__set__({
+        isValidJsonSchema: isValidJsonSchemaOrg,
+        loadStackYaml: loadStackYamlOrg
+      }));
+  });
+
+  it('stack params should override defaults', () => {
+    const testStack = { name: 'testStack',
+      tags: { one: 1, two: 2 },
+      capabilities: [ "TEST_CAPABILITY"],
+      timeout: 667
+    };
+    config.__set__({
+      isValidJsonSchema: () => true,
+      loadStackYaml: () => [ testStack ]
+    });
+    return config.loadStacks({}, [], {}, stackDefaults)
+      .then(it => {
+        assert.deepEqual(it[0].tags, testStack.tags)
+        assert.deepEqual(it[0].timeout, testStack.timeout)
+        assert.deepEqual(it[0].capabilities, testStack.capabilities)
+      })
+      .then(() => config.__set__({
+        isValidJsonSchema: isValidJsonSchemaOrg,
+        loadStackYaml: loadStackYamlOrg
+      }));
+  });
 });

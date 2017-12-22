@@ -4,6 +4,37 @@ const yaml = require('js-yaml');
 const Ajv = require('ajv');
 const templater = require('./templater.js');
 const debug = require('debug')('config');
+const fs = Promise.promisifyAll(require('fs'));
+
+async function loadStackYaml(stackCfg, stackFilters) {
+  return filterStacks(
+    yaml.safeLoad(
+      await fs.readFileAsync(
+        stackCfg)
+    ),
+    stackFilters
+  );
+}
+
+async function loadStacks(stackCfg, stackFilters, schema, stackDefaults) {
+
+  const stacks = await loadStackYaml(stackCfg, stackFilters);
+
+  // if no stacks exist or no stacks match filter:
+  if (stacks.length == 0) {
+    throw new Error('invalid stack argument');
+  }
+
+  return _.chain(stacks)
+    // assign default stack params
+    .map(stack => _.assign({}, stackDefaults, stack))
+    // validate stack vars
+    .map((stack) => {
+      if (!isValidJsonSchema(schema, stack))
+        throw new Error('Stack config file is invalid!');
+      return stack
+    }).value();
+}
 
 function loadNodeCfConfig(environment, cfg) {
 
@@ -19,9 +50,13 @@ function loadNodeCfConfig(environment, cfg) {
     s3LambdaDir: `${environment}/lambda`,
     globalCfg: `${localCfgDir}/global.yml`,
     stackCfg: `${localCfgDir}/stacks.yml`,
-    defaultTags: {
-      environment: environment,
-      application: "{{application}}"
+    stackDefaults: {
+      capabilities: [ 'CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM' ],
+      timeout: 45,
+      tags: {
+        environment: environment,
+        application: "{{application}}"
+      },
     }
   };
 
@@ -134,5 +169,6 @@ module.exports = {
   filterStacks: filterStacks,
   loadEnvConfig: loadEnvConfig,
   loadNodeCfConfig: loadNodeCfConfig,
-  isValidJsonSchema: isValidJsonSchema
+  isValidJsonSchema: isValidJsonSchema,
+  loadStacks: loadStacks
 };
