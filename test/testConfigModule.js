@@ -159,9 +159,9 @@ describe('loadStacks', () => {
     });
     return config.loadStacks({}, [], {}, stackDefaults)
       .then(it => {
-        assert.deepEqual(it[0].tags, stackDefaults.tags)
-        assert.deepEqual(it[0].timeout, stackDefaults.timeout)
-        assert.deepEqual(it[0].capabilities, stackDefaults.capabilities)
+        assert.deepEqual(it[0].tags, stackDefaults.tags);
+        assert.deepEqual(it[0].timeout, stackDefaults.timeout);
+        assert.deepEqual(it[0].capabilities, stackDefaults.capabilities);
       })
       .then(() => config.__set__({
         isValidJsonSchema: isValidJsonSchemaOrg,
@@ -181,9 +181,9 @@ describe('loadStacks', () => {
     });
     return config.loadStacks({}, [], {}, stackDefaults)
       .then(it => {
-        assert.deepEqual(it[0].tags, testStack.tags)
-        assert.deepEqual(it[0].timeout, testStack.timeout)
-        assert.deepEqual(it[0].capabilities, testStack.capabilities)
+        assert.deepEqual(it[0].tags, testStack.tags);
+        assert.deepEqual(it[0].timeout, testStack.timeout);
+        assert.deepEqual(it[0].capabilities, testStack.capabilities);
       })
       .then(() => config.__set__({
         isValidJsonSchema: isValidJsonSchemaOrg,

@@ -32,7 +32,7 @@ async function loadStacks(stackCfg, stackFilters, schema, stackDefaults) {
     .map((stack) => {
       if (!isValidJsonSchema(schema, stack))
         throw new Error('Stack config file is invalid!');
-      return stack
+      return stack;
     }).value();
 }
 
