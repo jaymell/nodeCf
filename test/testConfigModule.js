@@ -150,63 +150,44 @@ describe('loadStacks', () => {
       application: "{{application}}"
     }
   };
-  const testStack = { name: 'testStack' };
 
-  before(() => {
-    config.__set__({
-      isValidJsonSchema: () => true,
-      loadStackYaml: () => [ testStack ]
-    });
-  });
   it('should return defaults if nothing else specified', () => {
-    return config.loadStacks({}, [], {}, stackDefaults)
-    .then(it => {
-      assert.deepEqual(it[0].tags, stackDefaults.tags)
-      assert.deepEqual(it[0].timeout, stackDefaults.timeout)
-      assert.deepEqual(it[0].capabilities, stackDefaults.capabilities)
-    });
-  });
-  after(() => config.__set__({
-    isValidJsonSchema: isValidJsonSchemaOrg,
-    loadStackYaml: loadStackYamlOrg
-  }));
-
-});
-
-describe('loadStacks', () => {
-  // should match config.loadNodeCfConfig
-  const stackDefaults = {
-    capabilities: [ 'CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM' ],
-    timeout: 45,
-    tags: {
-      environment: "testEnv",
-      application: "{{application}}"
-    }
-  };
-  const testStack = { name: 'testStack',
-    tags: { one: 1, two: 2 },
-    capabilities: [ "TEST_CAPABILITY"],
-    timeout: 667
-  };
-
-  before(() => {
+    const testStack = { name: 'testStack' };
     config.__set__({
       isValidJsonSchema: () => true,
       loadStackYaml: () => [ testStack ]
     });
-  });
-  it('stack params should override defaults', () => {
     return config.loadStacks({}, [], {}, stackDefaults)
-    .then(it => {
-      assert.deepEqual(it[0].tags, testStack.tags)
-      assert.deepEqual(it[0].timeout, testStack.timeout)
-      assert.deepEqual(it[0].capabilities, testStack.capabilities)
-    });
+      .then(it => {
+        assert.deepEqual(it[0].tags, stackDefaults.tags)
+        assert.deepEqual(it[0].timeout, stackDefaults.timeout)
+        assert.deepEqual(it[0].capabilities, stackDefaults.capabilities)
+      })
+      .then(() => config.__set__({
+        isValidJsonSchema: isValidJsonSchemaOrg,
+        loadStackYaml: loadStackYamlOrg
+      }));
   });
-  after(() => config.__set__({
-    isValidJsonSchema: isValidJsonSchemaOrg,
-    loadStackYaml: loadStackYamlOrg
-  }));
 
+  it('stack params should override defaults', () => {
+    const testStack = { name: 'testStack',
+      tags: { one: 1, two: 2 },
+      capabilities: [ "TEST_CAPABILITY"],
+      timeout: 667
+    };
+    config.__set__({
+      isValidJsonSchema: () => true,
+      loadStackYaml: () => [ testStack ]
+    });
+    return config.loadStacks({}, [], {}, stackDefaults)
+      .then(it => {
+        assert.deepEqual(it[0].tags, testStack.tags)
+        assert.deepEqual(it[0].timeout, testStack.timeout)
+        assert.deepEqual(it[0].capabilities, testStack.capabilities)
+      })
+      .then(() => config.__set__({
+        isValidJsonSchema: isValidJsonSchemaOrg,
+        loadStackYaml: loadStackYamlOrg
+      }));
+  });
 });
-
