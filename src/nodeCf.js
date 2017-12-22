@@ -151,7 +151,8 @@ class CfStack {
       Parameters: parameters,
       Tags: tags,
       TemplateURL: s3Resp.Location,
-      Capabilities: [ 'CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM' ]
+      Capabilities: this.rawStackVars.capabilities,
+      TimeoutInMinutes: this.rawStackVars.timeout
     });
     const outputs = unwrapOutputs(stackResp.Outputs);
     return outputs;
@@ -318,7 +319,8 @@ async function createAwsCfStack(cli, params) {
   }
 }
 
-async function updateAwsCfStack(cli, params) {
+async function updateAwsCfStack(cli, rawParams) {
+  const params = _.omit(rawParams, ['TimeoutInMinutes']);
   console.log(`updating cloudformation stack ${params.StackName}`);
   try {
     const data = await cli.updateStack(params).promise();
