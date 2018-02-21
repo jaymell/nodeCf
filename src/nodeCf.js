@@ -41,10 +41,14 @@ class CfStack {
 
   async getAwsClient(clientName) {
     const creds = this.credentials;
+    // several stacks updated in rapid succession can
+    // cause throttling issues, so set this to arbitrarily
+    // high level:
+    const maxRetries = 30;
     if(_.isUndefined(creds)) {
       return new AWS[clientName]();
     }
-    return new AWS[clientName]({credentials: creds});
+    return new AWS[clientName]({credentials: creds, maxRetries: maxRetries });
   }
 
   async uploadTemplate(cli) {
