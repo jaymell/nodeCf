@@ -10,7 +10,7 @@ const cfStackConfigSchema = {
     },
     templateName: {
       type: "string",
-      pattern: "^[a-zA-Z0-9\-]+$"
+      pattern: "^[a-zA-Z0-9\-/]+$"
     },
     lambdaArtifact: {
       type: "string"
