@@ -1,11 +1,12 @@
 const Promise = require('bluebird');
 const fs = Promise.promisifyAll(require('fs'));
-const debug = require('debug')('util');
+const debug = require('debug')('utils');
 const child_process = require('child_process');
 const _ = require('lodash');
 
 // return filename if exists, else throw
 async function fileExists(f) {
+  debug(`fileExists called with: ${JSON.stringify(arguments)}`);
   try {
     await fs.statAsync(f);
     return f;

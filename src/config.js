@@ -1,14 +1,45 @@
 const Promise = require('bluebird');
 const _ = require('lodash');
-const yaml = require('js-yaml');
 const Ajv = require('ajv');
 const templater = require('./templater.js');
 const debug = require('debug')('config');
+const yaml = require('js-yaml');
 const fs = Promise.promisifyAll(require('fs'));
+const utils = require('./utils.js');
+const path = require("path");
+
+// load yaml, replace
+// null values with name of key;
+// f should be open file or string
+function loadYaml(f) {
+  return replaceNullValues(yaml.safeLoad(f));
+}
+
+function replaceNullValues(obj, type = 'Object') {
+  var method;
+  if (type === 'Object') {
+    method = _.mapValues;
+  }
+  else if (type === 'Array') {
+    method = _.map;
+  }
+  return method(obj, (v, k) => {
+    if (_.isPlainObject(v)) {
+      return replaceNullValues(v, 'Object');
+    }
+    if (_.isArray(v)) {
+      return replaceNullValues(v, 'Array');
+    }
+    if (v === null) {
+      return `{{${k}}}`;
+    }
+    return v;
+  });
+}
 
 async function loadStackYaml(stackCfg, stackFilters) {
   return filterStacks(
-    yaml.safeLoad(
+    loadYaml(
       await fs.readFileAsync(
         stackCfg)
     ),
@@ -30,8 +61,9 @@ async function loadStacks(stackCfg, stackFilters, schema, stackDefaults) {
     .map(stack => _.assign({}, stackDefaults, stack))
     // validate stack vars
     .map((stack) => {
-      if (!isValidJsonSchema(schema, stack))
+      if (!isValidJsonSchema(schema, stack)) {
         throw new Error('Stack config file is invalid!');
+      }
       return stack;
     }).value();
 }
@@ -50,6 +82,7 @@ function loadNodeCfConfig(environment, cfg) {
     s3LambdaDir: `${environment}/lambda`,
     globalCfg: `${localCfgDir}/global.yml`,
     stackCfg: `${localCfgDir}/stacks.yml`,
+    deleteUploadedTemplates: true,
     stackDefaults: {
       capabilities: [ 'CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM' ],
       timeout: 45,
@@ -154,6 +187,18 @@ async function loadEnvConfig(nj, schema, ...vars) {
   return envVars;
 }
 
+// if environment file exists, load it,
+// else return undefined:
+async function loadEnvFile(cfgDir, env) {
+  const f = await Promise.any(
+    _.map(['.yml', '.yaml', '.json', ''], async(ext) =>
+      await utils.fileExists(`${path.join(cfgDir, env)}${ext}`)));
+  if (f) {
+    return loadYaml(await fs.readFileAsync(f));
+  }
+  return undefined;
+}
+
 function isValidJsonSchema(schema, spec) {
   var ajv = new Ajv({
     useDefaults: true
@@ -168,7 +213,9 @@ module.exports = {
   parseArgs: parseArgs,
   filterStacks: filterStacks,
   loadEnvConfig: loadEnvConfig,
+  loadEnvFile: loadEnvFile,
   loadNodeCfConfig: loadNodeCfConfig,
   isValidJsonSchema: isValidJsonSchema,
-  loadStacks: loadStacks
+  loadStacks: loadStacks,
+  loadYaml: loadYaml
 };

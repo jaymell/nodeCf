@@ -1,0 +1,10 @@
+{
+  "name": "example-project",
+  "description": "example nodeCf project",
+  "scripts": {
+    "test": "./node_modules/.bin/nodeCf -e Dev -r us-east-1 validate"
+  },
+  "dependencies": {
+    "nodecf": "git+https://github.com/jaymell/nodeCf.git"
+  }
+}

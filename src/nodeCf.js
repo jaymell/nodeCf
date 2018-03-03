@@ -16,6 +16,7 @@ class CfStack {
     this.envVars = envVars;
     this.nj = nj;
     this.nodeCfConfig = nodeCfConfig;
+    this.deleteUploadedTemplates = nodeCfConfig.deleteUploadedTemplates;
     this.schema = schema.cfStackConfigSchema;
     this.infraBucket = envVars.infraBucket;
     this.deployName =
@@ -68,6 +69,8 @@ class CfStack {
     await validateAwsCfStack(cfCli, {
       TemplateURL: s3Resp.Location,
     });
+    if (this.deleteUploadedTemplates)
+      await s3Delete(s3Resp.Bucket, s3Resp.Key);
     console.log(`${this.name} is a valid Cloudformation template`);
   }
 
@@ -158,6 +161,8 @@ class CfStack {
       Capabilities: this.rawStackVars.capabilities,
       TimeoutInMinutes: this.rawStackVars.timeout
     });
+    if (this.deleteUploadedTemplates)
+      await s3Delete(s3Resp.Bucket, s3Resp.Key);
     const outputs = unwrapOutputs(stackResp.Outputs);
     return outputs;
   }
@@ -225,7 +230,7 @@ function unwrapOutputs(outputs) {
 // look for template having multiple possible file extensions
 async function getTemplateFile(templateDir, stackName) {
   const f = await Promise.any(
-    _.map(['.yml', '.json', '.yaml', ''], async(ext) =>
+    _.map(['.yml', '.yaml', '.json', ''], async(ext) =>
       await utils.fileExists(`${path.join(templateDir, stackName)}${ext}`)));
   if (f) {
     return f;
@@ -266,12 +271,20 @@ async function ensureBucket(cli, bucket) {
 }
 
 function s3Upload(cli, bucket, src, dest) {
-  debug(`uploading template ${src} to s3://${path.join(bucket, dest)}`);
+  debug(`uploading ${src} to s3://${path.join(bucket, dest)}`);
   const stream = fs.createReadStream(src);
   return cli.upload({
     Bucket: bucket,
     Key: dest,
     Body: stream
+  }).promise();
+}
+
+function s3Delete(cli, bucket, key) {
+  debug(`deleting s3://${path.join(bucket, key)}`);
+  return cli.deleteObject({
+    Bucket: bucket,
+    Key: key
   }).promise();
 }
 

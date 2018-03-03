@@ -1,0 +1,9 @@
+---
+account: "{{accounts.Prod}}"
+infraBucket: my-example-deployment-bucket
+
+VpcCidr: 10.0.16.0/20
+PublicSubnet0Cidr: 10.0.16.0/24
+PublicSubnet1Cidr: 10.0.17.0/24
+
+

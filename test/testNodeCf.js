@@ -72,7 +72,7 @@ describe('CfStack', () => {
   };
   const nodeCfCfg = config.loadNodeCfConfig('testEnv');
   it('should instantiate successfully', () =>
-    new nodeCf.CfStack(stackVars, nodeCfCfg));
+    new nodeCf.CfStack(stackVars, envVars, {}, nodeCfCfg));
 });
 
 describe('CfStack', function() {

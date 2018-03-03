@@ -50,7 +50,7 @@ Configuration parameters are rendered with the following order of precedence, wi
 * Global config file
 
 Config files must be written in yaml and by default are looked for in `./config`
-* Environment Config File (Required): Stores environment-specific variables  -- e.g., `./config/dev.yml`
+* Environment Config File (Optional): Stores environment-specific variables  -- e.g., `./config/dev.yml`
 * Global config file (Optional): Stores variables common to all environments -- e,g, `./config/global.yml`
 * Stack configuration (Required) -- Defines parameters and tags to pass to Cloudformation, as well as pre-and post-tasks (see below for more info)
 * NodeCf configuration (Optional) -- This feature doesn't actually exist yet, but should allow for overriding variables that get set in the `config` module
@@ -206,8 +206,3 @@ You can assume a role on a per-stack basis by adding a 'role' parameter to a sta
   parameters:
     VpcIPRange: "{{VpcIPRange}}"
 ```
-
-
-### TO DO
-* (Optionally) delete templates from s3 after deployment
-* Add example project

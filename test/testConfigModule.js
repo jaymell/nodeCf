@@ -2,7 +2,10 @@ const assert = require('assert');
 const rewire = require("rewire");
 const config = rewire('../src/config.js');
 const templater = rewire('../src/templater.js');
-
+const utils = require('../src/utils.js');
+const sinon = require('sinon');
+const fs = require('fs');
+const yaml = require('js-yaml');
 const isValidJsonSchemaOrg = config.__get__('isValidJsonSchema');
 const loadStackYamlOrg = config.__get__('loadStackYaml');
 
@@ -53,7 +56,7 @@ describe('parseExtraVars', () => {
 });
 
 describe('loadNodeCfConfig', () => {
-  it('should return what\s passed', () => {
+  it('should return what\'s passed', () => {
     const nodeCfCfg = config.loadNodeCfConfig(
       'testEnv',
       {localCfTemplateDir: 'someTestDir'});
@@ -105,17 +108,45 @@ describe('parseArgs', () => {
 });
 
 describe('loadEnvConfig', () => {
-
   before(() => config.__set__('isValidJsonSchema', () => true));
-
   it('should override previous vars with subsequent ones', () => {
     const nj = templater.loadNjEnv();
     return config.loadEnvConfig(nj, {}, {testVar1: 1}, {testVar1: 2})
       .then(d => assert.deepEqual(d.testVar1, 2));
   });
-
-  const nodeCfCfg = config.loadNodeCfConfig('testEnv');
   after(() => config.__set__('isValidJsonSchema', isValidJsonSchemaOrg));
+});
+
+describe('loadEnvFile', () => {
+  before(() => {
+    sinon.stub(utils, 'fileExists').callsFake(f => Promise.resolve(f));
+    sinon.stub(yaml, 'safeLoad').callsFake(f => ({test: 'data'}));
+    sinon.stub(fs, 'readFileAsync').callsFake(f => Promise.resolve());
+  });
+  it('should return data if file exists', () =>
+    config.loadEnvFile('testDir', 'testEnv')
+      .then(it => assert.deepEqual(it, {test: 'data'})));
+  after(() => {
+    utils.fileExists.restore();
+    yaml.safeLoad.restore();
+    fs.readFileAsync.restore();
+  });
+});
+
+describe('loadEnvFile', () => {
+  before(() => {
+    sinon.stub(utils, 'fileExists').callsFake(f => Promise.resolve(false));
+    sinon.stub(yaml, 'safeLoad').callsFake(f => ({test: 'data'}));
+    sinon.stub(fs, 'readFileAsync').callsFake(f => Promise.resolve());
+  });
+  it('should return undefined if no file found', () =>
+    config.loadEnvFile('testDir', 'testEnv')
+      .then(it => assert.equal(it, undefined)));
+  after(() => {
+    utils.fileExists.restore();
+    yaml.safeLoad.restore();
+    fs.readFileAsync.restore();
+  });
 });
 
 describe('loadStacks', () => {
@@ -190,4 +221,33 @@ describe('loadStacks', () => {
         loadStackYaml: loadStackYamlOrg
       }));
   });
+});
+
+describe('loadYaml', () => {
+  /* eslint-disable */
+  it('should replace null values with templateable variable with same name as key', () => {
+  /* eslint-enable */
+    const mockFile = JSON.stringify(
+      { testAlreadyDefined: "alreadyDefined",
+        testNullShouldBeReplacedWithTemplatableValue: null,
+        testBlankButNotNull: "",
+        testNestedArray: [
+          { testNestedNullShouldBeReplacedWithTemplatableValue: null },
+          { testNestedAlreadyDefined: "alreadyDefined" },
+          { testNestedBlankButNotNull: "" }
+        ]
+      });
+    const out = config.loadYaml(mockFile);
+    assert.deepEqual(
+      { testAlreadyDefined: "alreadyDefined",
+        testNullShouldBeReplacedWithTemplatableValue: "{{testNullShouldBeReplacedWithTemplatableValue}}",
+        testBlankButNotNull: "",
+        testNestedArray: [
+          { testNestedNullShouldBeReplacedWithTemplatableValue: "{{testNestedNullShouldBeReplacedWithTemplatableValue}}" },
+          { testNestedAlreadyDefined: "alreadyDefined" },
+          { testNestedBlankButNotNull: "" }
+        ]
+      }, out);
+  });
+
 });

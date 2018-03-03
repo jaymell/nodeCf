@@ -15,10 +15,9 @@ describe('getTemplateFile', function() {
   	});
   });
 
-  it('should return json extension', function() {
-    return getTemplateFile('/tmp', 'test')
-      .then(d => assert.equal(d, '/tmp/test.json'));
-  });
+  it('should return json extension', () =>
+    getTemplateFile('/tmp', 'test')
+      .then(d => assert.equal(d, '/tmp/test.json')));
 
   after(function() {
   	utils.fileExists.restore();
