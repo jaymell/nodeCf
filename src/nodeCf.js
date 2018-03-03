@@ -225,7 +225,7 @@ function unwrapOutputs(outputs) {
 // look for template having multiple possible file extensions
 async function getTemplateFile(templateDir, stackName) {
   const f = await Promise.any(
-    _.map(['.yml', '.json', '.yaml', ''], async(ext) =>
+    _.map(['.yml', '.yaml', '.json', ''], async(ext) =>
       await utils.fileExists(`${path.join(templateDir, stackName)}${ext}`)));
   if (f) {
     return f;

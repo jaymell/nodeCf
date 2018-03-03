@@ -53,7 +53,7 @@ describe('parseExtraVars', () => {
 });
 
 describe('loadNodeCfConfig', () => {
-  it('should return what\s passed', () => {
+  it('should return what\'s passed', () => {
     const nodeCfCfg = config.loadNodeCfConfig(
       'testEnv',
       {localCfTemplateDir: 'someTestDir'});
@@ -105,17 +105,37 @@ describe('parseArgs', () => {
 });
 
 describe('loadEnvConfig', () => {
-
   before(() => config.__set__('isValidJsonSchema', () => true));
-
   it('should override previous vars with subsequent ones', () => {
     const nj = templater.loadNjEnv();
     return config.loadEnvConfig(nj, {}, {testVar1: 1}, {testVar1: 2})
       .then(d => assert.deepEqual(d.testVar1, 2));
   });
-
-  const nodeCfCfg = config.loadNodeCfConfig('testEnv');
   after(() => config.__set__('isValidJsonSchema', isValidJsonSchemaOrg));
+});
+
+describe('loadEnvFile', () => {
+  var revert;
+  before(() => {
+    revert = config.__set__({
+      fs: {
+        readFileAsync: () => Promise.resolve()
+      },
+      yaml: {
+        safeLoad: () => ({ test: 'data' })
+      },
+      utils: {
+        fileExists: () => Promise.resolve(true)
+      }
+    });
+  });
+  it('should return data if file exists', () =>
+    config.loadEnvFile('testDir', 'testEnv')
+      .then(it => {
+        console.log('THIS: ', it)
+        return assert.deepEqual(it, {test: 'data'})
+      }));
+  after(() => revert());
 });
 
 describe('loadStacks', () => {

@@ -1,10 +1,11 @@
 const Promise = require('bluebird');
 const _ = require('lodash');
-const yaml = require('js-yaml');
 const Ajv = require('ajv');
 const templater = require('./templater.js');
 const debug = require('debug')('config');
-const fs = Promise.promisifyAll(require('fs'));
+var yaml = require('js-yaml');
+var fs = Promise.promisifyAll(require('fs'));
+var utils = require('./utils.js');
 
 async function loadStackYaml(stackCfg, stackFilters) {
   return filterStacks(
@@ -154,6 +155,18 @@ async function loadEnvConfig(nj, schema, ...vars) {
   return envVars;
 }
 
+// if environment file exists, load it,
+// else return undefined:
+async function loadEnvFile(cfgDir, env) {
+  const f = await Promise.any(
+    _.map(['.yml', '.yaml', '.json', ''], async(ext) =>
+      await utils.fileExists(`${path.join(cfgDir, env)}${ext}`)));
+  if (f) {
+    return yaml.safeLoad(await fs.readFileAsync(f));
+  }
+  return undefined;
+}
+
 function isValidJsonSchema(schema, spec) {
   var ajv = new Ajv({
     useDefaults: true
@@ -168,6 +181,7 @@ module.exports = {
   parseArgs: parseArgs,
   filterStacks: filterStacks,
   loadEnvConfig: loadEnvConfig,
+  loadEnvFile: loadEnvFile,
   loadNodeCfConfig: loadNodeCfConfig,
   isValidJsonSchema: isValidJsonSchema,
   loadStacks: loadStacks
