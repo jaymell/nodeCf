@@ -3,9 +3,10 @@ const _ = require('lodash');
 const Ajv = require('ajv');
 const templater = require('./templater.js');
 const debug = require('debug')('config');
-var yaml = require('js-yaml');
-var fs = Promise.promisifyAll(require('fs'));
-var utils = require('./utils.js');
+const yaml = require('js-yaml');
+const fs = Promise.promisifyAll(require('fs'));
+const utils = require('./utils.js');
+const path = require("path");
 
 async function loadStackYaml(stackCfg, stackFilters) {
   return filterStacks(
@@ -160,8 +161,9 @@ async function loadEnvConfig(nj, schema, ...vars) {
 async function loadEnvFile(cfgDir, env) {
   const f = await Promise.any(
     _.map(['.yml', '.yaml', '.json', ''], async(ext) =>
-      await utils.fileExists(`${path.join(cfgDir, env)}${ext}`)));
+      await utils.fileExists(`${path.join(cfgDir, env)}${ext}`)))
   if (f) {
+    console.log('NOW IM ERE')
     return yaml.safeLoad(await fs.readFileAsync(f));
   }
   return undefined;

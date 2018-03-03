@@ -2,7 +2,10 @@ const assert = require('assert');
 const rewire = require("rewire");
 const config = rewire('../src/config.js');
 const templater = rewire('../src/templater.js');
-
+const utils = require('../src/utils.js');
+const sinon = require('sinon');
+const fs = require('fs');
+const yaml = require('js-yaml');
 const isValidJsonSchemaOrg = config.__get__('isValidJsonSchema');
 const loadStackYamlOrg = config.__get__('loadStackYaml');
 
@@ -115,27 +118,35 @@ describe('loadEnvConfig', () => {
 });
 
 describe('loadEnvFile', () => {
-  var revert;
   before(() => {
-    revert = config.__set__({
-      fs: {
-        readFileAsync: () => Promise.resolve()
-      },
-      yaml: {
-        safeLoad: () => ({ test: 'data' })
-      },
-      utils: {
-        fileExists: () => Promise.resolve(true)
-      }
-    });
+    sinon.stub(utils, 'fileExists').callsFake(f => Promise.resolve(f));
+    sinon.stub(yaml, 'safeLoad').callsFake(f => ({test: 'data'}));
+    sinon.stub(fs, 'readFileAsync').callsFake(f => Promise.resolve());
   });
   it('should return data if file exists', () =>
     config.loadEnvFile('testDir', 'testEnv')
-      .then(it => {
-        console.log('THIS: ', it)
-        return assert.deepEqual(it, {test: 'data'})
-      }));
-  after(() => revert());
+      .then(it => assert.deepEqual(it, {test: 'data'})));
+  after(() => {
+    utils.fileExists.restore();
+    yaml.safeLoad.restore();
+    fs.readFileAsync.restore();
+  });
+});
+
+describe('loadEnvFile', () => {
+  before(() => {
+    sinon.stub(utils, 'fileExists').callsFake(f => Promise.resolve(false));
+    sinon.stub(yaml, 'safeLoad').callsFake(f => ({test: 'data'}));
+    sinon.stub(fs, 'readFileAsync').callsFake(f => Promise.resolve());
+  });
+  it('should return undefined if no file found', () =>
+    config.loadEnvFile('testDir', 'testEnv')
+      .then(it => assert.equal(it, undefined)));
+  after(() => {
+    utils.fileExists.restore();
+    yaml.safeLoad.restore();
+    fs.readFileAsync.restore();
+  });
 });
 
 describe('loadStacks', () => {
