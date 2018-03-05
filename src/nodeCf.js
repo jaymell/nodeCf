@@ -70,7 +70,7 @@ class CfStack {
       TemplateURL: s3Resp.Location,
     });
     if (this.deleteUploadedTemplates)
-      await s3Delete(cli, s3Resp.Bucket, s3Resp.Key);
+      await s3Delete(s3Cli, s3Resp.Bucket, s3Resp.Key);
     console.log(`${this.name} is a valid Cloudformation template`);
   }
 
@@ -162,7 +162,7 @@ class CfStack {
       TimeoutInMinutes: this.rawStackVars.timeout
     });
     if (this.deleteUploadedTemplates)
-      await s3Delete(cli, s3Resp.Bucket, s3Resp.Key);
+      await s3Delete(s3Cli, s3Resp.Bucket, s3Resp.Key);
     const outputs = unwrapOutputs(stackResp.Outputs);
     return outputs;
   }
