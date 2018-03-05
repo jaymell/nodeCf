@@ -1,0 +1,177 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: VPC and Network Template
+
+Parameters:
+  environment:
+    Type: String
+    Description: Environment name
+  application:
+    Type: String
+    Description: Application name
+  VpcCidr:
+    Type: String
+    Description: "Vpc Cidr Block"
+  PublicSubnet0Cidr:
+    Type: String
+    Description: "Subnet Cidr Block"
+  PublicSubnet1Cidr:
+    Type: String
+    Description: "Subnet Cidr Block"
+
+Conditions:
+  RegionIsUsEast1:
+    Fn::Equals:
+    - Ref: AWS::Region
+    - us-east-1
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: true
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      Tags:
+      - Value: !Sub ${environment}-${application}-${AWS::Region}
+        Key: Name
+  PublicRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+      - Value: !Sub ${AWS::StackName}-PublicRT
+        Key: Name
+  PublicSubnet0:
+    Type: AWS::EC2::Subnet
+    Properties:
+      Tags:
+      - Value: !Sub ${AWS::StackName}-PublicSubnet0
+        Key: Name
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet0Cidr
+      AvailabilityZone:
+        Fn::Select:
+        - 0
+        - Fn::GetAZs: !Ref AWS::Region
+  PublicSubnet0Association:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet0
+      RouteTableId: !Ref PublicRT
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      Tags:
+      - Value: !Sub ${AWS::StackName}-PublicSubnet1
+        Key: Name
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnet1Cidr
+      AvailabilityZone:
+        Fn::Select:
+        - 2
+        - Fn::GetAZs: !Ref AWS::Region
+  PublicSubnet1Association:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref  PublicRT
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Value: !Sub ${AWS::StackName}-InternetGateway
+        Key: Name
+  AttachIgw:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+  PublicRTIgwRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      GatewayId: !Ref InternetGateway
+      DestinationCidrBlock: 0.0.0.0/0
+      RouteTableId: !Ref PublicRT
+    DependsOn: AttachIgw
+  VPCDHCPOptionsAssociation:
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      VpcId: !Ref Vpc
+      DhcpOptionsId:
+        Ref: DHCPOptions
+  DHCPOptions:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainNameServers:
+      - AmazonProvidedDNS
+      DomainName:
+        Fn::If:
+        - RegionIsUsEast1
+        - ec2.internal
+        - Fn::Join:
+          - ''
+          - - Ref: AWS::Region
+            - ".compute.internal"
+  VPCFlowLog:
+    Type: AWS::EC2::FlowLog
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt VPCFlowLogIAMROle.Arn
+      LogGroupName: !Sub ${environment}-${application}-${AWS::Region}-VPCFlowLog
+      ResourceId: !Ref Vpc
+      ResourceType: VPC
+      TrafficType: ALL
+  VPCFlowLogIAMROle:
+    Type: AWS::IAM::Role
+    Properties:
+      Policies:
+      - PolicyName: VPCFLowLogPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - logs:DescribeLogGroups
+            - logs:DescribeLogStreams
+            Resource: "*"
+            Effect: Allow
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - vpc-flow-logs.amazonaws.com
+
+Outputs:
+  PublicSubnet0:
+    Value: !Ref PublicSubnet0
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnet0
+  PublicSubnet0AZ:
+    Value: !GetAtt PublicSubnet0.AvailabilityZone
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnet0AZ
+  PublicSubnet1:
+    Value: !Ref PublicSubnet1
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnet1
+  PublicSubnet1AZ:
+    Value: !GetAtt PublicSubnet1.AvailabilityZone
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnet1AZ
+  Vpc:
+    Value: !Ref Vpc
+    Export:
+      Name: !Sub ${AWS::StackName}-Vpc
+  CidrBlock:
+    Value: !GetAtt Vpc.CidrBlock
+    Export:
+      Name: !Sub ${AWS::StackName}-CidrBlock
+  PublicRT:
+    Value: !Ref PublicRT
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicRT

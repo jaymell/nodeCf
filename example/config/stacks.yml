@@ -1,0 +1,14 @@
+---
+stacks:
+- name: network
+  timeout: 10
+  parameters:
+    # blank variables will automatically
+    # filled in with variables matching key
+    # names; ie., application: 
+    # will become application: "{{application}}"
+    environment:
+    application:
+    VpcCidr:
+    PublicSubnet0Cidr:
+    PublicSubnet1Cidr:

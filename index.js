@@ -25,7 +25,7 @@ function usage() {
 
 async function main() {
 
-  var args, nodeCfCfg, nj, globalVars, envVars, stacks;
+  var args, nodeCfCfg, nj, globalVars, envFileVars, envVars, stacks;
 
   try {
     args = config.parseArgs(
@@ -91,16 +91,11 @@ async function main() {
   }
 
   try {
-    envVars = yaml.safeLoad(
-      await fs.readFileAsync(
-        path.join(
-          nodeCfCfg.localCfgDir,
-         `${args.environment}.yml`
-    )));
-
+    envFileVars = await config.loadEnvFile(nodeCfCfg.localCfgDir,
+      args.environment);
   } catch (e) {
     console.log(`Failed to load environment config: ${e.message}`);
-    process.exit(1);
+    console.log("Continuing without environment config file");
   }
 
   try {
@@ -112,7 +107,7 @@ async function main() {
     envVars = await config.loadEnvConfig(nj,
       schema.envConfigSchema,
       globalVars,
-      envVars,
+      envFileVars,
       { environment: args.environment, region: args.region },
       process.env,
       args.extraVars);
