@@ -68,7 +68,7 @@ async function loadStacks(stackCfg, stackFilters, schema, stackDefaults) {
     }).value();
 }
 
-function loadNodeCfConfig(environment, cfg) {
+function loadNodeCfConfig(cfg) {
 
   if ( typeof cfg === 'undefined') cfg = {};
 
@@ -78,8 +78,8 @@ function loadNodeCfConfig(environment, cfg) {
     localCfTemplateDir: `./templates`,
     localCfgDir: localCfgDir,
     filters: `${localCfgDir}/filters.js`,
-    s3CfTemplateDir: `${environment}/templates`,
-    s3LambdaDir: `${environment}/lambda`,
+    s3CfTemplateDir: `nodeCf/templates`,
+    s3LambdaDir: `nodeCf/lambda`,
     globalCfg: `${localCfgDir}/global.yml`,
     stackCfg: `${localCfgDir}/stacks.yml`,
     deleteUploadedTemplates: true,
@@ -87,7 +87,8 @@ function loadNodeCfConfig(environment, cfg) {
       capabilities: [ 'CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM' ],
       timeout: 45,
       tags: {
-        environment: environment,
+        // these are rendered at deployment time:
+        environment: "{{environment}}",
         application: "{{application}}"
       },
     }
@@ -126,6 +127,13 @@ function failIfEmpty(shortFlag, longFlag, argv) {
   }
 }
 
+function parseStringArrays(arr) {
+  return (
+    _.isString(arr) ?
+      _.map(arr.split(','), it => it.trim())
+      : undefined );
+}
+
 // validate command line arguments
 function parseArgs(argv) {
   debug('parseArgs argv: ', argv);
@@ -138,15 +146,7 @@ function parseArgs(argv) {
 
   failIfEmpty('e', 'environment', argv);
   failIfAbsent('e', 'environment', argv);
-  failIfEmpty('r', 'region', argv);
-  failIfAbsent('r', 'region', argv);
   if ('s' in argv || 'stacks' in argv) failIfEmpty('s', 'stacks', argv);
-
-  var getStackNames = stacks =>
-    ( _.isString(stacks) ?
-      _.map(stacks.split(','), stack => stack.trim())
-      : undefined );
-
   return {
     environment: argv['e'] || argv['environment'],
     extraVars: parseExtraVars(argv['x'] || argv['extraVars']),
@@ -154,7 +154,7 @@ function parseArgs(argv) {
     region: argv['r'] || argv['region'],
     profile: argv['p'],
     cfg: argv['c'] || argv['config'],
-    stackFilters: getStackNames(argv['s'] || argv['stacks']) || undefined
+    stackFilters: argv['s'] || argv['stacks'] || undefined
   };
 }
 
@@ -169,7 +169,6 @@ function filterStacks(stacks, stackFilters) {
   if ( diff.length !== 0 ) {
     throw(`Invalid stack name(s) passed: ${diff}`);
   }
-
   return _.filter(stacks.stacks, stack => stackFilters.includes(stack.name));
 }
 
@@ -217,5 +216,6 @@ module.exports = {
   loadNodeCfConfig: loadNodeCfConfig,
   isValidJsonSchema: isValidJsonSchema,
   loadStacks: loadStacks,
-  loadYaml: loadYaml
+  loadYaml: loadYaml,
+  parseStringArrays: parseStringArrays
 };

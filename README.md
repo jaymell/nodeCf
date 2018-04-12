@@ -16,14 +16,14 @@ npm i --save nodecf
 
 ### Usage
 ```
-node_modules/.bin/nodeCf [ ACTION ] -e,--environment <ENVIRONMENT> -r <REGION>  [-s,--stacks <STACK NAMES>] [ -p <PROFILE> ] [ -x, --extra-vars <EXTRA VARS> ]
+node_modules/.bin/nodeCf [ ACTION ] -e,--environment <ENVIRONMENT> [ -r <REGION> ]  [-s,--stacks <STACK NAMES>] [ -p <PROFILE> ] [ -x, --extra-vars <EXTRA VARS> ]
 ```
 
 Run deployment against specified ENVIRONMENT.
 
-* ENVIRONMENT should match name of environment file
+* ENVIRONMENT must be defined and passed at run-time
 * ACTION defaults to 'deploy': choices are 'deploy', 'delete', and 'validate'
-* REGION specifies the desired AWS Region and currently must be passed at runtime
+* REGION specifies the desired AWS Region
 * PROFILE specifies an optional name for an AWS profile to assume when running the job
 * STACK NAME corresponds to the name of your Cloudformation templates, separated by commas if multiple
 * EXTRA VARS indicate extra variables for deployment; useful for any variables that are only known at runtime; in the form "KEY=VALUE" -- additional variables should be separated by spaces
@@ -55,9 +55,9 @@ Config files must be written in yaml and by default are looked for in `./config`
 * NodeCf configuration (Optional) -- This feature doesn't actually exist yet, but should allow for overriding variables that get set in the `config` module
 
 ### Required variables:
-* environment -- this must be passed on command line as first argument to command; its name must match the name of your environment variables file
-* stacks -- these must either be passed on command line or defined in your environments file(s); it is an array of stacks which must be run -- order matters
-* region -- this must be passed on command line
+* environment -- this must be passed on command line
+* stacks -- these must either be passed on command line or defined in your environments file(s) or system environment variables; it is an array of stacks which must be run -- order matters
+* region -- this defines the aws region to which you're deploying
 * account -- your AWS account number
 * application -- this can be anything, but the name of your repository is a good default; it is used for naming and uniquely identifying resources
 * infraBucket -- Cloudformation stacks over a certain size must first be uploaded to s3; as a result, nodeCf requires the name of a bucket to use for deployments; the scripts will handle creating it for you (assuming its name has not already been taken by some other random AWS user).

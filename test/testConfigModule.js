@@ -58,22 +58,20 @@ describe('parseExtraVars', () => {
 describe('loadNodeCfConfig', () => {
   it('should return what\'s passed', () => {
     const nodeCfCfg = config.loadNodeCfConfig(
-      'testEnv',
       {localCfTemplateDir: 'someTestDir'});
     assert.equal(nodeCfCfg.localCfTemplateDir, 'someTestDir');
   });
 
   it('should return proper paths under localCfgDir', () => {
     const nodeCfCfg = config.loadNodeCfConfig(
-      'testEnv',
       {localCfgDir: 'someTestDir'});
     assert.equal(nodeCfCfg.globalCfg, 'someTestDir/global.yml');
   });
 
   it('should return defaults if nothing passed', () => {
-    const nodeCfCfg = config.loadNodeCfConfig('testEnv');
+    const nodeCfCfg = config.loadNodeCfConfig();
     assert.equal(nodeCfCfg.localCfTemplateDir, './templates');
-    assert.equal(nodeCfCfg.stackDefaults. tags.environment, 'testEnv');
+    assert.equal(nodeCfCfg.stackDefaults. tags.environment, '{{environment}}');
   });
 });
 
@@ -88,7 +86,7 @@ describe('parseArgs', () => {
     const myArgs = { _: [], e: 'Dev', region: 'us-east-1',
       stacks: 'stack1,stack2' };
     const retVal = config.parseArgs(myArgs);
-    assert.deepEqual(retVal.stackFilters, ['stack1' ,'stack2']);
+    assert.equal(retVal.stackFilters, 'stack1,stack2');
   });
 
   it('should throw if no env passed', () => {
@@ -226,7 +224,6 @@ describe('loadStacks', () => {
 describe('loadYaml', () => {
   /* eslint-disable */
   it('should replace null values with templateable variable with same name as key', () => {
-  /* eslint-enable */
     const mockFile = JSON.stringify(
       { testAlreadyDefined: "alreadyDefined",
         testNullShouldBeReplacedWithTemplatableValue: null,
@@ -249,5 +246,16 @@ describe('loadYaml', () => {
         ]
       }, out);
   });
-
 });
+
+
+describe('parseStringArrays', () => {
+  const expected = ["testStack1", "testStack2", "testStack3"];
+  it("should return expected array given command-delimited string", () => {
+    assert.deepEqual(expected, config.parseStringArrays("testStack1,testStack2,testStack3"));
+  });
+  it("should return expected array given command-delimited string w/ extra spaces", () => {
+    assert.deepEqual(expected, config.parseStringArrays("testStack1 , testStack2 , testStack3"));
+  });
+});
+  /* eslint-enable */
