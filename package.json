@@ -1,6 +1,6 @@
 {
   "name": "nodecf",
-  "version": "0.0.1",
+  "version": "1.0.5",
   "description": "for cloudformation-based deployments",
   "main": "index.js",
   "scripts": {

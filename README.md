@@ -10,9 +10,8 @@ Requires:
 * nodejs v8.0.0 or later
 * npm
 
-Add the github link as a npm dependency to your local NPM repo.
 ```
-npm install --save 'https://github.com/jaymell/nodeCf.git#v.9.7.1'
+npm i --save nodecf
 ```
 
 ### Usage
