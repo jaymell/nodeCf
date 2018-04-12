@@ -1,6 +1,6 @@
 {
   "name": "nodecf",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "for cloudformation-based deployments",
   "main": "index.js",
   "scripts": {
@@ -8,8 +8,8 @@
     "tdd": "node_modules/.bin/mocha -w",
     "lint": "node_modules/.bin/eslint ."
   },
-  "author": "",
-  "license": "UNLICENSED",
+  "author": "jaymell",
+  "license": "GPLv3",
   "repository": {
     "type": "git",
     "url": "git+https://git@github.com/jaymell/nodeCf.git"
@@ -34,6 +34,7 @@
     "sinon": "^2.3.1"
   },
   "bin": {
-    "nodeCf": "./index.js"
+    "nodeCf": "./index.js",
+    "nodecf": "./index.js"
   }
 }

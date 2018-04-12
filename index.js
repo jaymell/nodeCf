@@ -15,7 +15,7 @@ const debug = require('debug')('index');
 function usage() {
   /* eslint-disable */
   const usageStr = `\n\tUsage: ` +
-					`\n\t\tnode_modules/.bin/nodeCf -e,--environment <ENVIRONMENT> -r,--region <REGION> [ -s,--stacks <STACK NAMES> ] [ -p <PROFILE> ] [-x, --extraVars <VARIABLES>] [ ACTION ]` +
+					`\n\t\tnode_modules/.bin/nodeCf -e,--environment <ENVIRONMENT> [ -r,--region <REGION> ] [ -s,--stacks <STACK NAMES> ] [ -p <PROFILE> ] [-x, --extraVars <VARIABLES>] [ ACTION ]` +
                    `\n\n\tACTION defaults to 'deploy'; other options are 'validate' and 'delete'` +
                    `\n\n\tVARIABLES should be "Key=Value" pairs; several can be passed if separated by spaces and wrapped in quotes, e.g., "Key1=Value1 Key2=Value2"\n`;
   /* eslint-enable */
@@ -47,7 +47,7 @@ async function main() {
     } else {
       var cfg = {};
     }
-    nodeCfCfg = config.loadNodeCfConfig(args.environment, cfg);
+    nodeCfCfg = config.loadNodeCfConfig(cfg);
     debug('nodeCfCfg: ', nodeCfCfg);
   }
   catch (e) {
@@ -118,7 +118,8 @@ async function main() {
 
   try {
     // stacks passed in cli can override stacks defined in env file
-    let stackFilters = args.stackFilters || envVars.stacks;
+    let stackFilters = config.parseStringArrays(
+      args.stackFilters || envVars.stacks);
     stacks = await config.loadStacks(nodeCfCfg.stackCfg,
       stackFilters,
       schema.cfStackConfigSchema,
