@@ -118,8 +118,11 @@ async function main() {
 
   try {
     // stacks passed in cli can override stacks defined in env file
-    let stackFilters = config.parseStringArrays(
-      args.stackFilters || envVars.stacks);
+    let rawStackFilters = args.stackFilters || envVars.stacks;
+    let stackFilters =
+      ( _.isString(rawStackFilters) ?
+        config.parseStringArrays(rawStackFilters) :
+        rawStackFilters);
     stacks = await config.loadStacks(nodeCfCfg.stackCfg,
       stackFilters,
       schema.cfStackConfigSchema,

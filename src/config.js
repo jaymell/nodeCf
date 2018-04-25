@@ -128,10 +128,10 @@ function failIfEmpty(shortFlag, longFlag, argv) {
 }
 
 function parseStringArrays(arr) {
-  return (
-    _.isString(arr) ?
-      _.map(arr.split(','), it => it.trim())
-      : undefined );
+  if(!_.isString(arr)) {
+    throw new Error(`${arr} is not a string`);
+  }
+  return _.map(arr.split(','), it => it.trim());
 }
 
 // validate command line arguments

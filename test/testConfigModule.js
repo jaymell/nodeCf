@@ -257,5 +257,10 @@ describe('parseStringArrays', () => {
   it("should return expected array given command-delimited string w/ extra spaces", () => {
     assert.deepEqual(expected, config.parseStringArrays("testStack1 , testStack2 , testStack3"));
   });
+  it("should throw if string not passed", () => {
+    let badStacks = ["testStack1", "testStack2"];
+    assert.throws(() => config.parseStringArrays(badStacks),
+      new RegExp(`Error: ${badStacks.toString()} is not a string`));
+  })
 });
   /* eslint-enable */
