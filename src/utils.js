@@ -18,7 +18,10 @@ async function fileExists(f) {
 async function execTask(task) {
   return new Promise((res, rej) =>
     child_process.exec(task, (err, stdout, stderr) => {
-      if (err) return rej(err);
+      if (err) {
+	console.log(stdout, stderr);
+	return rej(err);
+      }
       return res({stdout: stdout, stderr: stderr });
     }));
 }
