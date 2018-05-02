@@ -1,0 +1,43 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: lambda1
+
+Parameters:
+  LambdaBucket:
+    Type: String
+    Description: Name of Bucket Containing Lambda Code
+  LambdaKey:
+    Type: String
+    Description: S3 Key for Lambda Code
+
+Resources:
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: "/"
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+
+  Lambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref LambdaBucket
+        S3Key: !Ref LambdaKey
+      Handler: index.handler
+      Runtime: nodejs6.10
+      Role: !GetAtt LambdaRole.Arn
+
+Outputs:
+  Lambda:
+    Value: !Ref Lambda
+    Export:
+      Name: !Sub ${AWS::StackName}-Lambda

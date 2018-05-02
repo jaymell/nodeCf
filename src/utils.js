@@ -30,7 +30,7 @@ async function execTask(task) {
 async function execTasks(tasks, taskType) {
   debug(`execTasks: called for ${taskType}`);
   if (!(_.isEmpty(tasks))) {
-    if (taskType) console.log(`running ${taskType}... `);
+    if (taskType) console.log(`running ${taskType}...`);
     const output = await Promise.mapSeries(tasks, async(task) => {
       const result = await execTask(task);
       if (_.isString(result.stdout) && (!_.isEmpty(result.stdout)))

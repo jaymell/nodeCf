@@ -5,10 +5,23 @@ stacks:
   parameters:
     # blank variables will automatically
     # filled in with variables matching key
-    # names; ie., application: 
+    # names; ie., application:
     # will become application: "{{application}}"
     environment:
     application:
     VpcCidr:
     PublicSubnet0Cidr:
     PublicSubnet1Cidr:
+
+- name: infra1
+  parameters:
+    VpcId:
+  stackDependencies:
+  - "{{environment}}-{{application}}-network"
+
+- name: infra2
+  parameters:
+    VpcId:
+  stackDependencies:
+  - "{{environment}}-{{application}}-network"
+
