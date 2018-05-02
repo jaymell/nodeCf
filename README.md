@@ -25,8 +25,15 @@ Run deployment against specified ENVIRONMENT.
 * ACTION defaults to 'deploy': choices are 'deploy', 'delete', and 'validate'
 * REGION specifies the desired AWS Region
 * PROFILE specifies an optional name for an AWS profile to assume when running the job
-* STACK NAME corresponds to the name of your Cloudformation templates, separated by commas if multiple
+* STACK NAME corresponds to the name of your Cloudformation templates, wrapped in quotes and separated by spaces if multiple
 * EXTRA VARS indicate extra variables for deployment; useful for any variables that are only known at runtime; in the form "KEY=VALUE" -- additional variables should be separated by spaces
+
+In addition, environment variables can be used for most configuration parameters. For example, stacks can be can specified by exporting a variable named `stacks` like so:
+```
+export stacks="myFirstStack mySecondStack"
+```
+
+This would obviate the need to pass them via the `-s` flag.
 
 ### Template Files
 Cloudformation templates -- by default are stored in `./templates` in either json or yaml format.
@@ -52,13 +59,12 @@ Config files must be written in yaml and by default are looked for in `./config`
 * Environment Config File (Optional): Stores environment-specific variables  -- e.g., `./config/dev.yml`
 * Global config file (Optional): Stores variables common to all environments -- e,g, `./config/global.yml`
 * Stack configuration (Required) -- Defines parameters and tags to pass to Cloudformation, as well as pre-and post-tasks (see below for more info)
-* NodeCf configuration (Optional) -- This feature doesn't actually exist yet, but should allow for overriding variables that get set in the `config` module
+* NodeCf configuration (Optional) -- This feature doesn't actually exist yet, but should allow for overriding default values that are set in the `config` module
 
 ### Required variables:
 * environment -- this must be passed on command line
 * stacks -- these must either be passed on command line or defined in your environments file(s) or system environment variables; it is an array of stacks which must be run -- order matters
 * region -- this defines the aws region to which you're deploying
-* account -- your AWS account number
 * application -- this can be anything, but the name of your repository is a good default; it is used for naming and uniquely identifying resources
 * infraBucket -- Cloudformation stacks over a certain size must first be uploaded to s3; as a result, nodeCf requires the name of a bucket to use for deployments; the scripts will handle creating it for you (assuming its name has not already been taken by some other random AWS user).
 
@@ -114,7 +120,7 @@ You could then pass your variable through a filter like this:
 {{ myVariable | filterName }}
 ```
 
-If the filter function is asynchronous, you must indicate so by wrapping it in an `async` key in modules.exports. You can read more about filters in the [Nunjucks documentation](https://mozilla.github.io/nunjucks/templating.html#filters).
+If the filter function is asynchronous, you must indicate so by wrapping it in an `async` key in modules.exports, as shown above. You can read more about filters in the [Nunjucks documentation](https://mozilla.github.io/nunjucks/templating.html#filters).
 
 ### Outputs, Pre-Tasks, Post-Tasks, Creation Tasks, and Lambda Artifacts
 There are a few additional properties you can add to the individual stack definitions to help with deployments.

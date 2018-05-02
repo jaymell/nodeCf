@@ -1,0 +1,25 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Infra
+
+Parameters:
+  VpcId:
+    Type: String
+
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Port 22
+      SecurityGroupIngress:
+      - ToPort: 22
+        FromPort: 22
+        CidrIp: 0.0.0.0/0
+        IpProtocol: tcp
+      VpcId: !Ref VpcId
+
+Outputs:
+  SecurityGroup:
+    Value: !Ref SecurityGroup
+    Export:
+      Name: !Sub ${AWS::StackName}-SecurityGroup

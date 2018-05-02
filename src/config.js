@@ -131,7 +131,7 @@ function parseStringArrays(arr) {
   if(!_.isString(arr)) {
     throw new Error(`${arr} is not a string`);
   }
-  return _.map(arr.split(','), it => it.trim());
+  return _.map(arr.replace(/\s+/g,' ').trim().split(' '), it => it);
 }
 
 // validate command line arguments

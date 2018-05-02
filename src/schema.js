@@ -95,7 +95,7 @@ const envConfigSchema = {
       type: "string"
     },
   },
-  required: ["account", "environment", "application", "infraBucket", "region"]
+  required: ["environment", "application", "infraBucket", "region"]
 };
 
 module.exports = {

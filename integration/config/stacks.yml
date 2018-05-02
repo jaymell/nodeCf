@@ -1,0 +1,51 @@
+---
+stacks:
+- name: network
+  timeout: 10
+  parameters:
+    environment:
+    application:
+    VpcCidr:
+    PublicSubnet0Cidr:
+    PublicSubnet1Cidr:
+
+- name: infra1
+  creationTasks:
+  - echo infra1 creation {{stacks.network.outputs.Vpc}}
+  preTasks:
+  - echo infra1 pre {{stacks.network.outputs.Vpc}}
+  parameters:
+    VpcId: "{{stacks.network.outputs.Vpc}}"
+  stackDependencies:
+  - "{{environment}}-{{application}}-network"
+  postTasks:
+  - echo infra1 post {{outputs.SecurityGroup}}
+  - echo infra1 post {{stacks.network.outputs.Vpc}}
+
+- name: infra2
+  creationTasks:
+  - echo infra2 creation {{stacks.network.outputs.Vpc}}
+  preTasks:
+  - echo infra2 pre {{stacks.network.outputs.Vpc}}
+  parameters:
+    VpcId: "{{stacks.network.outputs.Vpc}}"
+  stackDependencies:
+  - "{{environment}}-{{application}}-network"
+  postTasks:
+  - echo infra2 post {{outputs.SecurityGroup}}
+  - echo infra2 post {{stacks.network.outputs.Vpc}}
+
+- name: lambda1
+  lambdaArtifact:
+  creationTasks:
+  - echo lambda1 creation {{stacks.network.outputs.Vpc}}
+  preTasks:
+  - echo lambda1 pre {{stacks.network.outputs.Vpc}}
+  parameters:
+    LambdaBucket: "{{lambda.bucket}}"
+    LambdaKey: "{{lambda.key}}"
+  stackDependencies:
+  - "{{environment}}-{{application}}-network"
+  postTasks:
+  - echo lambda1 post {{outputs.Lambda}}
+  - echo lambda1 post {{stacks.network.outputs.Vpc}}

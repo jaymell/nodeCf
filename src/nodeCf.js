@@ -12,32 +12,46 @@ AWS.config.setPromisesDependency(Promise);
 class CfStack {
   constructor(stackVars, envVars, nj, nodeCfConfig) {
     this.name = stackVars.name;
-    this.rawStackVars = stackVars;
+    this.templateName = stackVars.templateName;
+    this.role = stackVars.role;
+    this.parameters = stackVars.parameters;
+    this.tags = stackVars.tags;
+    this.capabilities = stackVars.capabilities;
+    this.timeout = stackVars.timeout;
+    this.stackDependencies = stackVars.stackDependencies;
+    this.lambdaArtifact = stackVars.lambdaArtifact;
+    this.preTasks = stackVars.preTasks;
+    this.creationTasks = stackVars.creationTasks;
+    this.postTasks = stackVars.postTasks;
+
     this.envVars = envVars;
+    this.infraBucket = envVars.infraBucket;
+
     this.nj = nj;
     this.nodeCfConfig = nodeCfConfig;
     this.deleteUploadedTemplates = nodeCfConfig.deleteUploadedTemplates;
+
     this.schema = schema.cfStackConfigSchema;
-    this.infraBucket = envVars.infraBucket;
+
     this.deployName =
       `${envVars.environment}-${envVars.application}-${this.name}`;
+  }
+
+  async lateInit() {
+    this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir,
+      this.templateName || this.name);
+    // if role defined at stack level, use that, otherwise
+    // use one at environment level (which itself could be undefined):
+    const rawRole = this.role || this.envVars.role;
+    // ensure any template vars in role are processed:
+    if (!(_.isUndefined(rawRole))) var role = await this.renderObj(rawRole);
+    this.credentials = await this.getAwsCredentials(role);
   }
 
   async getAwsCredentials(role) {
     debug(`CfStack.getAwsCredentials -- role: ${role}`);
     const creds = await getAwsCredentials(role);
     return creds;
-  }
-
-  async lateInit() {
-    this.template = await getTemplateFile(this.nodeCfConfig.localCfTemplateDir,
-      this.rawStackVars.templateName || this.rawStackVars.name);
-    // if role defined at stack level, use that, otherwise
-    // use one at environment level (which itself could be undefined):
-    const rawRole = this.rawStackVars.role || this.envVars.role;
-    // ensure any template vars in role are processed:
-    if (!(_.isUndefined(rawRole))) var role = await this.renderObj(rawRole);
-    this.credentials = await this.getAwsCredentials(role);
   }
 
   async getAwsClient(clientName) {
@@ -58,20 +72,6 @@ class CfStack {
     const s3Location = path.join(this.nodeCfConfig.s3CfTemplateDir,
       `${this.name}-${timestamp}.yml`);
     return await s3Upload(cli, this.infraBucket, this.template, s3Location);
-  }
-
-  async validate() {
-    await this.lateInit();
-    const s3Cli = await this.getAwsClient('S3');
-    const cfCli = await this.getAwsClient('CloudFormation');
-    const s3Resp = await this.uploadTemplate(s3Cli);
-    debug('s3Resp: ', s3Resp);
-    await validateAwsCfStack(cfCli, {
-      TemplateURL: s3Resp.Location,
-    });
-    if (this.deleteUploadedTemplates)
-      await s3Delete(s3Cli, s3Resp.Bucket, s3Resp.Key);
-    console.log(`${this.name} is a valid Cloudformation template`);
   }
 
   async doLambdaArtifacts(cli, lambdaArtifact) {
@@ -109,48 +109,40 @@ class CfStack {
     return dependencies;
   }
 
-  async renderList(vars, extraRenderVars) {
+  async renderList(vars, ...renderVars) {
     // pass in optional extra vars to be used for rendering:
     return templater.renderList(this.nj, vars,
-      _.merge(this.envVars, extraRenderVars));
+      _.merge(this.envVars, ...renderVars));
   }
 
-  async renderObj(vars, extraRenderVars) {
+  async renderObj(vars, ...renderVars) {
     // pass in optional extra vars to be used for rendering:
     return templater.renderObj(this.nj, vars,
-      _.merge(this.envVars, extraRenderVars));
+      _.merge(this.envVars, ...renderVars));
   }
 
-  async doTasks(tasks, label) {
+  async doTasks(tasks, label, ...renderVars) {
     // render and run tasks
     debug(`CfStack.doTasks: calling ${label}`);
-    const renderedTasks = await this.renderList(tasks);
+    const renderedTasks = await this.renderList(tasks, ...renderVars);
     await utils.execTasks(renderedTasks, label);
     debug(`CfStack.doTasks: returning from ${label}`);
   }
 
-  async doPostTasks(tasks, stackExports, label) {
-    // render and run tasks
-    debug(`CfStack.doPostTasks: calling ${label}`);
-    const renderedTasks = await this.renderList(tasks, stackExports);
-    await utils.execTasks(renderedTasks, label);
-    debug(`CfStack.doPostTasks: returning from ${label}`);
-  }
-
   // these only run if stack didn't already exist:
-  async doCreationTasks(cli, tasks, label) {
+  async doCreationTasks(cli, label, tasks, ...renderVars) {
     if (!(await awsCfStackExists(cli, this.deployName))) {
-      await this.doTasks(tasks, label);
+      await this.doTasks(tasks, label, ...renderVars);
     }
   }
 
-  async doStackDeploy(s3Cli, cfCli, lambdaVars) {
+  async doStackDeploy(s3Cli, cfCli, stacks, lambdaVars) {
     // render and wrap parameters and tags
     debug(`CfStack.doStackDeploy: ${JSON.stringify(lambdaVars)}`);
     const parameters = wrapWith("ParameterKey", "ParameterValue",
-      await this.renderObj(this.rawStackVars.parameters, lambdaVars));
+      await this.renderObj(this.parameters, stacks, lambdaVars));
     const tags = wrapWith("Key", "Value",
-      await this.renderObj(this.rawStackVars.tags));
+      await this.renderObj(this.tags));
     // deploy stack
     const s3Resp = await this.uploadTemplate(s3Cli);
     const stackResp = await ensureAwsCfStack(cfCli, {
@@ -158,8 +150,8 @@ class CfStack {
       Parameters: parameters,
       Tags: tags,
       TemplateURL: s3Resp.Location,
-      Capabilities: this.rawStackVars.capabilities,
-      TimeoutInMinutes: this.rawStackVars.timeout
+      Capabilities: this.capabilities,
+      TimeoutInMinutes: this.timeout
     });
     if (this.deleteUploadedTemplates)
       await s3Delete(s3Cli, s3Resp.Bucket, s3Resp.Key);
@@ -174,30 +166,25 @@ class CfStack {
 
     const s3Cli = await this.getAwsClient('S3');
     const cfCli = await this.getAwsClient('CloudFormation');
-    const stackExportsObj = {};
-    const stackExports = stackExportsObj[this.name] = {};
-    const lambdaVars = {};
-
-    // add dependencies to envVars.stacks:
-    _.assign(this.envVars.stacks,
-      (await this.doDependencies(cfCli, this.rawStackVars.stackDependencies)));
+    const stacks = {
+      stacks: await this.doDependencies(cfCli, this.stackDependencies)
+    };
     // add lambda helpers to stack exports:
-    lambdaVars.lambda =
-      await this.doLambdaArtifacts(s3Cli, this.rawStackVars.lambdaArtifact);
+    const lambdaVars = {
+      lambda: await this.doLambdaArtifacts(s3Cli, this.lambdaArtifact)
+    };
     // creation tasks:
-    await this.doCreationTasks(cfCli, this.rawStackVars.creationTasks,
-      'creationTasks');
+    await this.doCreationTasks(cfCli, 'creationTasks', this.creationTasks, stacks);
     // pre-tasks:
-    await this.doTasks(this.rawStackVars.preTasks, 'preTasks');
+    await this.doTasks(this.preTasks, 'preTasks', stacks);
     // deploy stack:
-    stackExports.outputs = await this.doStackDeploy(s3Cli, cfCli, lambdaVars);
+    const outputs = {
+      outputs: await this.doStackDeploy(s3Cli, cfCli, stacks, lambdaVars)
+    };
     // post-tasks:
-    await this.doPostTasks(this.rawStackVars.postTasks,
-      stackExports, 'postTasks');
+    await this.doTasks(this.postTasks, 'postTasks', stacks, outputs);
 
     console.log(`deployed ${this.deployName}`);
-
-    return stackExports;
   }
 
   async delete() {
@@ -213,6 +200,20 @@ class CfStack {
     else {
       console.log('Nothing to delete.');
     }
+  }
+
+  async validate() {
+    await this.lateInit();
+    const s3Cli = await this.getAwsClient('S3');
+    const cfCli = await this.getAwsClient('CloudFormation');
+    const s3Resp = await this.uploadTemplate(s3Cli);
+    debug('s3Resp: ', s3Resp);
+    await validateAwsCfStack(cfCli, {
+      TemplateURL: s3Resp.Location,
+    });
+    if (this.deleteUploadedTemplates)
+      await s3Delete(s3Cli, s3Resp.Bucket, s3Resp.Key);
+    console.log(`${this.name} is a valid Cloudformation template`);
   }
 }
 
@@ -322,6 +323,8 @@ async function createAwsCfStack(cli, params) {
   console.log(`creating cloudformation stack ${params.StackName}`);
   try {
     const data = await cli.createStack(params).promise();
+    // const events = await cli.describeStackEvents({ StackName: params.StackName }).promise();
+    // console.log("events: ", events.StackEvents);
     await cli.waitFor('stackCreateComplete', {
       StackName: params.StackName
     }).promise();
@@ -341,6 +344,8 @@ async function updateAwsCfStack(cli, rawParams) {
   console.log(`updating cloudformation stack ${params.StackName}`);
   try {
     const data = await cli.updateStack(params).promise();
+    // const events = await cli.describeStackEvents({ StackName: params.StackName }).promise();
+    // console.log("events: ", events.StackEvents);
     await cli.waitFor('stackUpdateComplete', {
       StackName: params.StackName
     }).promise();
@@ -378,6 +383,8 @@ async function deleteAwsCfStack(cli, params) {
   console.log(`deleting cloudformation stack ${params.StackName}`);
   try {
     const resp = await cli.deleteStack(params).promise();
+    // const events = await cli.describeStackEvents({ StackName: params.StackName }).promise();
+    // console.log("events: ", events.StackEvents);
     await cli.waitFor('stackDeleteComplete', {
       StackName: params.StackName
     }).promise();
@@ -393,18 +400,6 @@ async function validateAwsCfStack(cli, params) {
   } catch (e) {
     throw e;
   }
-}
-
-function configAws(params) {
-  if (typeof params.profile !== 'undefined' && params.profile) {
-    const credentials = new AWS.SharedIniFileCredentials({
-      profile: params.profile
-    });
-    AWS.config.credentials = credentials;
-  }
-  AWS.config.update({
-    region: params.region
-  });
 }
 
 async function getAwsRoleCreds(role, masterCreds) {
@@ -435,41 +430,36 @@ async function getAwsCredentials(role) {
   return getAwsRoleCreds(role, creds);
 }
 
-async function validate(stackVars, envVars, nj, nodeCfConfig) {
-  if (_.isEmpty(stackVars)) return envVars;
-  const cfStack = new CfStack(stackVars[0], envVars, nj, nodeCfConfig);
-  await cfStack.validate();
-  // recurse:
-  return validate(stackVars.slice(1), envVars, nj, nodeCfConfig);
+async function validate(stacks, envVars, nj, nodeCfConfig) {
+  return Promise.all(stacks.map(async(it) => {
+    const cfStack = new CfStack(it, envVars, nj, nodeCfConfig);
+    await cfStack.validate();
+  }));
 }
 
-async function deploy(stackVarsList, envVars, nj, nodeCfConfig) {
-  if (_.isEmpty(stackVarsList)) return envVars;
-  if (_.isUndefined(envVars.stacks) ) envVars.stacks = {};
-  const cfStack = new CfStack(stackVarsList[0], envVars, nj, nodeCfConfig);
-  // merge envVars.stacks with stack outputs returned after deploying
-  // individual stack:
-  _.assign(envVars, (await cfStack.deploy()));
-  debug('envVars: ', JSON.stringify(envVars));
-  // recurse:
-  return deploy(stackVarsList.slice(1), envVars, nj, nodeCfConfig);
+async function deploy(stacks, envVars, nj, nodeCfConfig) {
+  return Promise.each(stacks, async(it) => {
+    const cfStack = new CfStack(it, _.cloneDeep(envVars), nj, nodeCfConfig);
+    await cfStack.deploy();
+    debug('stack: ', JSON.stringify(it));
+    debug('envVars: ', JSON.stringify(envVars));
+  });
 }
 
-async function deleteStacks(stackVars, envVars, nj, nodeCfConfig) {
-  if (_.isEmpty(stackVars)) return envVars;
-  const cfStack = new CfStack(stackVars[0], envVars, nj, nodeCfConfig);
-  await cfStack.delete();
-  // recurse:
-  return deleteStacks(stackVars.slice(1), envVars, nj, nodeCfConfig);
+async function deleteStacks(stacks, envVars, nj, nodeCfConfig) {
+  return Promise.each(stacks, async(it) => {
+    const cfStack = new CfStack(it, envVars, nj, nodeCfConfig);
+    await cfStack.delete();
+  });
 }
 
 module.exports = {
-    configAws: configAws,
     CfStack: CfStack,
     validate: validate,
     deleteStacks: deleteStacks,
     deploy: deploy,
     getTemplateFile: getTemplateFile,
     wrapWith: wrapWith,
-    unwrapOutputs: unwrapOutputs
+    unwrapOutputs: unwrapOutputs,
+    awsDescribeCfStack: awsDescribeCfStack
 };

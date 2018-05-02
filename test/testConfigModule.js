@@ -8,6 +8,7 @@ const fs = require('fs');
 const yaml = require('js-yaml');
 const isValidJsonSchemaOrg = config.__get__('isValidJsonSchema');
 const loadStackYamlOrg = config.__get__('loadStackYaml');
+const _ = require('lodash');
 
 describe('filterStacks', () => {
   const mockStacks = {
@@ -248,19 +249,24 @@ describe('loadYaml', () => {
   });
 });
 
-
 describe('parseStringArrays', () => {
   const expected = ["testStack1", "testStack2", "testStack3"];
-  it("should return expected array given command-delimited string", () => {
-    assert.deepEqual(expected, config.parseStringArrays("testStack1,testStack2,testStack3"));
+  it("should return expected array given space-delimited string", () => {
+    assert.deepEqual(expected, config.parseStringArrays("testStack1 testStack2 testStack3"));
   });
-  it("should return expected array given command-delimited string w/ extra spaces", () => {
-    assert.deepEqual(expected, config.parseStringArrays("testStack1 , testStack2 , testStack3"));
+  it("should return expected array given space-delimited string w/ extra spaces", () => {
+    assert.deepEqual(expected, config.parseStringArrays("testStack1    testStack2  testStack3"));
   });
   it("should throw if string not passed", () => {
     let badStacks = ["testStack1", "testStack2"];
     assert.throws(() => config.parseStringArrays(badStacks),
       new RegExp(`Error: ${badStacks.toString()} is not a string`));
+  })
+  it("should return a single-element array given single element", () => {
+    assert.deepEqual(["testStack1"], config.parseStringArrays('testStack1'))
+  })
+  it("should return a single-element array given single element with extra spaces", () => {
+    assert.deepEqual(["testStack1"], config.parseStringArrays('     testStack1   '))
   })
 });
   /* eslint-enable */
