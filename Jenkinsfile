@@ -6,12 +6,14 @@ pipeline {
     stages {
         stage('Build') {
             steps {
-                npm install
+                sh 'npm install'
+                sh 'npm run lint'
+                sh 'npm run test'
             }
         }
         stage('Test') {
             steps {
-              npm run integration 
+              sh 'npm run integration'
             }
         }
     }
