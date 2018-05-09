@@ -13,7 +13,9 @@ pipeline {
         }
         stage('Test') {
             steps {
-              sh 'npm run integration'
+              withCredentials([string(credentialsId: 'infraBucket', variable: 'infraBucket')]) {
+              	sh 'npm run integration'
+			  }
             }
         }
     }
