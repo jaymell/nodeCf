@@ -186,12 +186,13 @@ async function loadEnvConfig(nj, schema, ...vars) {
   return envVars;
 }
 
-// if environment file exists, load it,
-// else return undefined:
-async function loadEnvFile(cfgDir, env) {
+// if file exists, load it, else return undefined.
+// Iterate through various possible file extensions
+// in attempt to find file.
+async function loadConfigFile(filePath) {
   const f = await Promise.any(
     _.map(['.yml', '.yaml', '.json', ''], async(ext) =>
-      await utils.fileExists(`${path.join(cfgDir, env)}${ext}`)));
+      await utils.fileExists(`${filePath}${ext}`)));
   if (f) {
     return loadYaml(await fs.readFileAsync(f));
   }
@@ -212,7 +213,7 @@ module.exports = {
   parseArgs: parseArgs,
   filterStacks: filterStacks,
   loadEnvConfig: loadEnvConfig,
-  loadEnvFile: loadEnvFile,
+  loadConfigFile: loadConfigFile,
   loadNodeCfConfig: loadNodeCfConfig,
   isValidJsonSchema: isValidJsonSchema,
   loadStacks: loadStacks,

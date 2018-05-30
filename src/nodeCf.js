@@ -228,6 +228,13 @@ function unwrapOutputs(outputs) {
     .value();
 }
 
+function unwrapTags(outputs) {
+  return _.chain(outputs)
+    .keyBy('Key')
+    .mapValues('Value')
+    .value();
+}
+
 // look for template having multiple possible file extensions
 async function getTemplateFile(templateDir, stackName) {
   const f = await Promise.any(
@@ -461,5 +468,6 @@ module.exports = {
     getTemplateFile: getTemplateFile,
     wrapWith: wrapWith,
     unwrapOutputs: unwrapOutputs,
+    unwrapTags: unwrapTags,
     awsDescribeCfStack: awsDescribeCfStack
 };

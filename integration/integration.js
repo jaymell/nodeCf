@@ -2,6 +2,8 @@ const assert = require('assert');
 const child_process = require('child_process');
 const _ = require('lodash');
 const Promise = require('bluebird');
+const fs = Promise.promisifyAll(require('fs'));
+const yaml = require('js-yaml');
 const run = require('../src/run.js');
 const nodeCf = require('../src/nodeCf.js');
 const AWS = require('aws-sdk');
@@ -61,6 +63,7 @@ describe('stack deployment using config file defaults', function() {
       const lambda1Outputs = nodeCf.unwrapOutputs(
         (await nodeCf.awsDescribeCfStack(cfCli, "Dev-example-lambda1")).Outputs);
       const expected = [
+        "Failed to load nodecf config fom file. Using default configuration. ",
         "deploying Dev-example-network",
         "creating cloudformation stack Dev-example-network",
         "deployed Dev-example-network",
@@ -110,6 +113,7 @@ describe('stack deployment passing stacks as environment variables', function() 
       const lambda1Outputs = nodeCf.unwrapOutputs(
         (await nodeCf.awsDescribeCfStack(cfCli, "Dev-example-lambda1")).Outputs);
       const expected = [
+        "Failed to load nodecf config fom file. Using default configuration. ",
         "deploying Dev-example-network",
         "creating cloudformation stack Dev-example-network",
         "deployed Dev-example-network",
@@ -132,4 +136,46 @@ describe('stack deployment passing stacks as environment variables', function() 
       await runCommand(cmd, { stacks: "network lambda1" } );
     }
   });
+});
+
+
+describe('stacks deployed with custom config file', function() {
+
+  this.timeout(1000 * 60 * 45);
+  const configFile = "./integration/config/config.yml";
+
+  before(async() => {
+    const configContent = {
+      stackDefaults: {
+          tags: {
+            customTagKey: "customTagValue"
+          }
+        }
+    };
+    return await fs.writeFileAsync(configFile, yaml.safeDump(configContent));
+  });
+
+  it('should merge tags in custom config file with defaults', async() => {
+    const cmd = getCommand("Dev");
+    try {
+      const { stdout, stderr } = await runCommand(cmd, { stacks: "network" });
+      const awsParams = getAwsParams();
+      const cfCli = new AWS.CloudFormation(awsParams);
+      const networkTags = nodeCf.unwrapTags(
+        (await nodeCf.awsDescribeCfStack(cfCli, "Dev-example-network")).Tags);
+      assert.deepEqual("customTagValue", networkTags.customTagKey);
+      assert.deepEqual("Dev", networkTags.environment);
+      assert.deepEqual("example", networkTags.application);
+    }
+    finally {
+      // clean up
+      const cmd = getCommand("Dev", undefined, undefined, task="delete");
+      await runCommand(cmd, { stacks: "network lambda1" } );
+    }
+  });
+
+  after(async() => {
+    return await fs.unlinkAsync(configFile);
+  });
+
 });
