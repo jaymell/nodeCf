@@ -12,6 +12,8 @@ const debug = require('debug')('index');
 const AWS = require('aws-sdk');
 AWS.config.setPromisesDependency(Promise);
 
+const DEFAULT_CONFIG_FILE_LOCATION = "./config";
+
 // for mocking:
 var loadStacks = config.loadStacks;
 
@@ -75,21 +77,17 @@ async function loadEnvironment(argv) {
 
   try {
     let _cfg;
-    if (typeof args.cfg !== 'undefined') {
-      try {
-        _cfg = yaml.safeLoad(await fs.ReadFileAsync(args.cfg));
-      } catch (e) {
-        console.log(`Unable to load nodeCf config file: ${e.message}`);
-        process.exit(1);
-      }
-    } else {
-      _cfg = {};
+    try {
+      let cfgFileName = args.cfg || `${DEFAULT_CONFIG_FILE_LOCATION}/config`;
+      _cfg = await config.loadConfigFile(cfgFileName);
+    } catch (e) {
+      console.log("Failed to load nodecf config fom file. Using default configuration. ");
     }
     nodeCfCfg = config.loadNodeCfConfig(_cfg);
     debug('nodeCfCfg: ', nodeCfCfg);
   }
   catch (e) {
-    console.log("Failed to load nodecf config: ", e.message);
+    console.error("Failed to load nodecf config: ", e.message);
     usage();
   }
 
@@ -101,7 +99,7 @@ async function loadEnvironment(argv) {
       const filters = require(filtersModule);
       nj = templater.loadNjEnv(filters.sync, filters.async);
     } catch (e) {
-      console.log('Failed to load Nunjucks environment: ', e);
+      console.error('Failed to load Nunjucks environment: ', e);
       process.exit(1);
     }
   }
@@ -109,20 +107,20 @@ async function loadEnvironment(argv) {
     try {
       nj = templater.loadNjEnv();
     } catch (e) {
-      console.log('Failed to load Nunjucks environment: ', e);
+      console.error('Failed to load Nunjucks environment: ', e);
       process.exit(1);
     }
   }
 
   try {
-    globalVars = await config.loadEnvFile(nodeCfCfg.localCfgDir, "global");
+    globalVars = await config.loadConfigFile(`${nodeCfCfg.localCfgDir}/global`);
   } catch (e) {
     console.log("Failed to load global config file. Continuing without it.");
     debug(e.message);
   }
 
   try {
-    envFileVars = await config.loadEnvFile(nodeCfCfg.localCfgDir, args.environment);
+    envFileVars = await config.loadConfigFile(`${nodeCfCfg.localCfgDir}/${args.environment}`);
   } catch (e) {
     console.log("Failed to load environment config file. Continuing without it");
     debug(e.message);
@@ -142,7 +140,7 @@ async function loadEnvironment(argv) {
       process.env,
       args.extraVars);
   } catch (e) {
-    console.log('Invalid environment configuration: ', e);
+    console.error('Invalid environment configuration: ', e);
     process.exit(1);
   }
 
@@ -158,7 +156,7 @@ async function loadEnvironment(argv) {
       schema.cfStackConfigSchema,
       nodeCfCfg.stackDefaults);
   } catch (e) {
-    console.log(`Failed to load stack config: `, e);
+    console.error(`Failed to load stack config: `, e);
     process.exit(1);
   }
 
@@ -174,7 +172,7 @@ async function run(action, stacks, envVars, nj, nodeCfCfg) {
       try {
         await nodeCf.deploy(stacks, envVars, nj, nodeCfCfg);
       } catch (e) {
-        console.log(`deployment failed: `, e);
+        console.error(`deployment failed: `, e);
         process.exit(1);
       }
       break;
@@ -182,7 +180,7 @@ async function run(action, stacks, envVars, nj, nodeCfCfg) {
       try {
         await nodeCf.validate(stacks, envVars, nj, nodeCfCfg);
       } catch (e) {
-        console.log(`validation failed: `, e);
+        console.error(`validation failed: `, e);
         process.exit(1);
       }
       break;
@@ -191,7 +189,7 @@ async function run(action, stacks, envVars, nj, nodeCfCfg) {
         // note that stack order is reversed prior to deletion:
         await nodeCf.deleteStacks(stacks.reverse(), envVars, nj, nodeCfCfg);
       } catch (e) {
-        console.log(`delete failed: `, e);
+        console.error(`delete failed: `, e);
         process.exit(1);
       }
       break;

@@ -116,14 +116,14 @@ describe('loadEnvConfig', () => {
   after(() => config.__set__('isValidJsonSchema', isValidJsonSchemaOrg));
 });
 
-describe('loadEnvFile', () => {
+describe('loadConfigFile', () => {
   before(() => {
     sinon.stub(utils, 'fileExists').callsFake(f => Promise.resolve(f));
     sinon.stub(yaml, 'safeLoad').callsFake(f => ({test: 'data'}));
     sinon.stub(fs, 'readFileAsync').callsFake(f => Promise.resolve());
   });
   it('should return data if file exists', () =>
-    config.loadEnvFile('testDir', 'testEnv')
+    config.loadConfigFile('testDir', 'testEnv')
       .then(it => assert.deepEqual(it, {test: 'data'})));
   after(() => {
     utils.fileExists.restore();
@@ -132,14 +132,14 @@ describe('loadEnvFile', () => {
   });
 });
 
-describe('loadEnvFile', () => {
+describe('loadConfigFile', () => {
   before(() => {
     sinon.stub(utils, 'fileExists').callsFake(f => Promise.resolve(false));
     sinon.stub(yaml, 'safeLoad').callsFake(f => ({test: 'data'}));
     sinon.stub(fs, 'readFileAsync').callsFake(f => Promise.resolve());
   });
   it('should return undefined if no file found', () =>
-    config.loadEnvFile('testDir', 'testEnv')
+    config.loadConfigFile('testDir', 'testEnv')
       .then(it => assert.equal(it, undefined)));
   after(() => {
     utils.fileExists.restore();
