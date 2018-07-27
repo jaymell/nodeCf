@@ -122,7 +122,7 @@ async function loadEnvironment(argv) {
   try {
     envFileVars = await config.loadConfigFile(`${nodeCfCfg.localCfgDir}/${args.environment}`);
   } catch (e) {
-    console.log("Failed to load environment config file. Continuing without it");
+    console.log("Failed to load environment config file. Continuing without it. ");
     debug(e.message);
   }
 

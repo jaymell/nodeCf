@@ -66,6 +66,12 @@ const cfStackConfigSchema = {
         type: "string"
       }
     },
+    notificationArns: {
+      type: "array",
+      items: {
+        type: "string"
+      }
+    }
   },
   required: ["name"]
 };

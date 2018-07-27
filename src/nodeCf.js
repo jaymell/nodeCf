@@ -23,7 +23,7 @@ class CfStack {
     this.preTasks = stackVars.preTasks;
     this.creationTasks = stackVars.creationTasks;
     this.postTasks = stackVars.postTasks;
-
+    this.notificationArns = stackVars.notificationArns;
     this.envVars = envVars;
     this.infraBucket = envVars.infraBucket;
 
@@ -151,6 +151,7 @@ class CfStack {
       Tags: tags,
       TemplateURL: s3Resp.Location,
       Capabilities: this.capabilities,
+      NotificationArns: this.notificationArns,
       TimeoutInMinutes: this.timeout
     });
     if (this.deleteUploadedTemplates)
