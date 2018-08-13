@@ -143,7 +143,8 @@ describe('envConfigSchema', () => {
       config.isValidJsonSchema(envConfigSchema, {
         account: 'test',
         environment: 'test',
-        infraBucket: 'test'
+        infraBucket: 'test',
+        region: 'test'
       }));
   });
 
@@ -152,16 +153,27 @@ describe('envConfigSchema', () => {
       config.isValidJsonSchema(envConfigSchema, {
         account: 'test',
         application: 'test',
-        infraBucket: 'test'
+        infraBucket: 'test',
+        region: 'test'
       }));
   });
 
-  it('should fail if no account', () => {
-    assert.equal(false,
+  it('should pass if account is integer or string', () => {
+    assert.equal(true,
       config.isValidJsonSchema(envConfigSchema, {
+        account: 12345,
         application: 'test',
         environment: 'test',
-        infraBucket: 'test'
+        infraBucket: 'test',
+        region: 'test'
+      }));
+    assert.equal(true,
+      config.isValidJsonSchema(envConfigSchema, {
+        account: "12345",
+        application: 'test',
+        environment: 'test',
+        infraBucket: 'test',
+        region: 'test'
       }));
   });
 
@@ -170,17 +182,41 @@ describe('envConfigSchema', () => {
       config.isValidJsonSchema(envConfigSchema, {
         application: 'test',
         environment: 'test',
-        account: 'test'
+        account: 'test',
+        region: 'test'
       }));
   });
+
   it('should pass if all required passed', () => {
-    assert.equal(false,
+    assert.equal(true,
       config.isValidJsonSchema(envConfigSchema, {
         application: 'test',
         environment: 'test',
         infraBucket: 'test',
-        account: 'test'
+        account: 'test',
+        region: 'test'
+      }));
+  });
+
+  it('should fail if environment contains dash', () => {
+    assert.equal(false,
+      config.isValidJsonSchema(envConfigSchema, {
+        application: 'test',
+        environment: 'te-st',
+        infraBucket: 'test',
+        account: 'test',
+        region: 'test'
+      }));
+  });
+
+  it('should fail if application contains dash', () => {
+    assert.equal(false,
+      config.isValidJsonSchema(envConfigSchema, {
+        application: 'te-st',
+        environment: 'test',
+        infraBucket: 'test',
+        account: 'test',
+        region: 'test'
       }));
   });
 });
-
