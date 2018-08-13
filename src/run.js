@@ -81,7 +81,14 @@ async function loadEnvironment(argv) {
       let cfgFileName = args.cfg || `${DEFAULT_CONFIG_FILE_LOCATION}/config`;
       _cfg = await config.loadConfigFile(cfgFileName);
     } catch (e) {
-      console.log("Failed to load nodecf config fom file. Using default configuration. ");
+      debug(e);
+      if (e instanceof Promise.AggregateError) {
+        console.log("Failed to load nodecf config fom file. Using default configuration. ");
+      } else {
+        console.error(e.message);
+        console.log("Unexpected error loading nodecf config fom file. Exiting.");
+        process.exit(1);
+      }
     }
     nodeCfCfg = config.loadNodeCfConfig(_cfg);
     debug('nodeCfCfg: ', nodeCfCfg);
@@ -115,15 +122,27 @@ async function loadEnvironment(argv) {
   try {
     globalVars = await config.loadConfigFile(`${nodeCfCfg.localCfgDir}/global`);
   } catch (e) {
-    console.log("Failed to load global config file. Continuing without it.");
-    debug(e.message);
+      debug(e);
+      if (e instanceof Promise.AggregateError) {
+        console.log("Failed to load global config file. Continuing without it.");
+      } else {
+        console.error(e.message);
+        console.log("Unexpected error loading global config file. Exiting");
+        process.exit(1);
+      }
   }
 
   try {
     envFileVars = await config.loadConfigFile(`${nodeCfCfg.localCfgDir}/${args.environment}`);
   } catch (e) {
-    console.log("Failed to load environment config file. Continuing without it");
-    debug(e.message);
+      debug(e);
+      if (e instanceof Promise.AggregateError) {
+        console.log("Failed to load environment config file. Continuing without it");
+      } else {
+        console.error(e.message);
+        console.log("Unexpected error loading environment config file. Exiting");
+        process.exit(1);
+      }
   }
 
   try {
