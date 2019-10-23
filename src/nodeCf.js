@@ -33,8 +33,7 @@ class CfStack {
 
     this.schema = schema.cfStackConfigSchema;
 
-    this.deployName =
-      `${envVars.environment}-${envVars.application}-${this.name}`;
+    this.deployName = stackVars.stackDeployName || `${envVars.environment}-${envVars.application}-${this.name}`;
   }
 
   async lateInit() {
@@ -160,7 +159,8 @@ class CfStack {
   }
 
   async deploy() {
-    console.log(`deploying ${this.deployName}`);
+  this.deployName = await this.renderObj(this.deployName);
+  console.log(`deploying ${this.deployName}`);
 
     await this.lateInit();
 
@@ -189,6 +189,7 @@ class CfStack {
 
   async delete() {
     await this.lateInit();
+    this.deployName = await this.renderObj(this.deployName);
     const cfCli = await this.getAwsClient('CloudFormation');
     if (await awsCfStackExists(cfCli, this.deployName)) {
       const resp = await deleteAwsCfStack(cfCli, {
@@ -204,6 +205,7 @@ class CfStack {
 
   async validate() {
     await this.lateInit();
+    this.deployName = await this.renderObj(this.deployName);
     const s3Cli = await this.getAwsClient('S3');
     const cfCli = await this.getAwsClient('CloudFormation');
     const s3Resp = await this.uploadTemplate(s3Cli);
