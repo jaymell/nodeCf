@@ -75,18 +75,19 @@ const cfStackConfigSchema = {
 const envConfigSchema = {
   properties: {
     application: {
-      type: "string"
+      type: "string",
+      pattern: "^[^-]+$"
     },
     account: {
       anyOf: [{
-        type: "string",
-        pattern: "^[0-9]+$"
+        type: "string"
       }, {
         type: "integer"
       }]
     },
     environment: {
-      type: "string"
+      type: "string",
+      pattern: "^[^-]+$"
     },
     infraBucket: {
       type: "string"
