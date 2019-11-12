@@ -1,6 +1,6 @@
 {
   "name": "@healthmine/nodecf",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "for cloudformation-based deployments",
   "main": "index.js",
   "scripts": {
