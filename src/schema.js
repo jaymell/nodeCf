@@ -66,6 +66,9 @@ const cfStackConfigSchema = {
         type: "string"
       }
     },
+    stackDeployName: {
+      type: "string"
+    },
   },
   required: ["name"]
 };

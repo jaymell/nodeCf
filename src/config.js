@@ -204,7 +204,10 @@ function isValidJsonSchema(schema, spec) {
     useDefaults: true
   });
   var valid = ajv.compile(schema);
-  if (!(valid(spec))) return false;
+  if (!(valid(spec))) {
+    console.error(ajv.errorsText());
+    return false;
+  }
   return true;
 }
 
