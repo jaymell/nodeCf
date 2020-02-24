@@ -33,7 +33,7 @@ Resources:
         S3Bucket: !Ref LambdaBucket
         S3Key: !Ref LambdaKey
       Handler: index.handler
-      Runtime: nodejs6.10
+      Runtime: nodejs10.x
       Role: !GetAtt LambdaRole.Arn
 
 Outputs:
