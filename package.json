@@ -22,7 +22,7 @@
     "debug": "^2.6.8",
     "js-yaml": "^3.8.3",
     "lodash": "^4.17.4",
-    "minimist": "^1.2.0",
+    "minimist": "^1.2.2",
     "nunjucks": "^3.0.0",
     "rxjs": "^6.0.0"
   },
