@@ -8,11 +8,12 @@ const fs = Promise.promisifyAll(require('fs'));
 const utils = require('./utils.js');
 const path = require("path");
 
+
 // load yaml, replace
 // null values with name of key;
 // f should be open file or string
 function loadYaml(f) {
-  return replaceNullValues(yaml.safeLoad(f));
+  return replaceNullValues(yaml.load(f));
 }
 
 function replaceNullValues(obj, type = 'Object') {
@@ -200,8 +201,8 @@ async function loadConfigFile(filePath) {
 }
 
 function isValidJsonSchema(schema, spec) {
-  var ajv = new Ajv({
-    useDefaults: true
+  var ajv = new Ajv.default({
+    allErrors: true
   });
   var valid = ajv.compile(schema);
   if (!(valid(spec))) {

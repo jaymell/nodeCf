@@ -119,7 +119,7 @@ describe('loadEnvConfig', () => {
 describe('loadConfigFile', () => {
   before(() => {
     sinon.stub(utils, 'fileExists').callsFake(f => Promise.resolve(f));
-    sinon.stub(yaml, 'safeLoad').callsFake(f => ({test: 'data'}));
+    sinon.stub(yaml, 'load').callsFake(f => ({test: 'data'}));
     sinon.stub(fs, 'readFileAsync').callsFake(f => Promise.resolve());
   });
   it('should return data if file exists', () =>
@@ -127,7 +127,7 @@ describe('loadConfigFile', () => {
       .then(it => assert.deepEqual(it, {test: 'data'})));
   after(() => {
     utils.fileExists.restore();
-    yaml.safeLoad.restore();
+    yaml.load.restore();
     fs.readFileAsync.restore();
   });
 });
@@ -135,7 +135,7 @@ describe('loadConfigFile', () => {
 describe('loadConfigFile', () => {
   before(() => {
     sinon.stub(utils, 'fileExists').callsFake(f => Promise.resolve(false));
-    sinon.stub(yaml, 'safeLoad').callsFake(f => ({test: 'data'}));
+    sinon.stub(yaml, 'load').callsFake(f => ({test: 'data'}));
     sinon.stub(fs, 'readFileAsync').callsFake(f => Promise.resolve());
   });
   it('should return undefined if no file found', () =>
@@ -143,7 +143,7 @@ describe('loadConfigFile', () => {
       .then(it => assert.equal(it, undefined)));
   after(() => {
     utils.fileExists.restore();
-    yaml.safeLoad.restore();
+    yaml.load.restore();
     fs.readFileAsync.restore();
   });
 });
