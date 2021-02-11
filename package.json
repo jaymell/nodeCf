@@ -16,7 +16,7 @@
     "url": "git@github.com:healthmine/nodeCf.git"
   },
   "dependencies": {
-    "ajv": "^6.12.0",
+    "ajv": "^7.1.0",
     "aws-sdk": "^2.842.0",
     "bluebird": "^3.7.2",
     "debug": "^4.1.1",
