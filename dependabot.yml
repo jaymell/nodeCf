@@ -1,0 +1,12 @@
+# Specify labels for pull requests
+
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    # Specify labels for npm pull requests
+    labels:
+      - "npm"
+      - "dependencies"
