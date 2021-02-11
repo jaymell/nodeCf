@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "ajv": "^6.12.0",
-    "aws-sdk": "^2.645.0",
+    "aws-sdk": "^2.842.0",
     "bluebird": "^3.7.2",
     "debug": "^4.1.1",
     "js-yaml": "^4.0.0",
