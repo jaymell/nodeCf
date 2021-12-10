@@ -9,7 +9,7 @@ Simple package to help with Cloudformation deployments. It is written in nodejs,
 Requires:
 * nodejs v8.0.0 or later
 * npm
-
+* This entry in ~/.npmrc : `@healthmine:registry=http://sinopia.healthmine.com:4873`
 ```
 npm i --save nodecf
 ```
