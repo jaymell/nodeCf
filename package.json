@@ -16,7 +16,7 @@
     "url": "git+https://git@github.com/jaymell/nodeCf.git"
   },
   "dependencies": {
-    "ajv": "^5.0.1",
+    "ajv": "^6.12.3",
     "aws-sdk": "^2.46.0",
     "bluebird": "^3.5.1",
     "debug": "^2.6.8",
