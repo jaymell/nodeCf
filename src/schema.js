@@ -102,7 +102,27 @@ const envConfigSchema = {
   required: ["environment", "application", "infraBucket", "region"]
 };
 
+const stackGroupsSchema = {
+  type: "array",
+  items: {
+    type: "object",
+    properties: {
+      name: {
+        type: "string",
+      },
+      stacks: {
+        type: "array",
+        items: {
+          type: "string",
+        },
+      },
+    },
+    required: ["name", "stacks"]
+  },
+}
+
 module.exports = {
   cfStackConfigSchema: cfStackConfigSchema,
-  envConfigSchema: envConfigSchema
+  envConfigSchema: envConfigSchema,
+  stackGroupsSchema: stackGroupsSchema,
 };

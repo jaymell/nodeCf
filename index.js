@@ -4,11 +4,11 @@ const run = require('./src/run.js');
 
 async function main() {
   const { action,
-          stacks,
+          stackGroups,
           envVars,
           nj,
           nodeCfCfg } = await run.loadEnvironment(process.argv.slice(2));
-  run.run(action, stacks, envVars, nj, nodeCfCfg);
+  run.run(action, stackGroups, envVars, nj, nodeCfCfg);
 }
 
 main();

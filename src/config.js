@@ -5,6 +5,7 @@ const templater = require('./templater.js');
 const debug = require('debug')('config');
 const yaml = require('js-yaml');
 const fs = Promise.promisifyAll(require('fs'));
+const schema = require('./schema.js');
 const utils = require('./utils.js');
 const path = require("path");
 
@@ -49,7 +50,6 @@ async function loadStackYaml(stackCfg, stackFilters) {
 }
 
 async function loadStacks(stackCfg, stackFilters, schema, stackDefaults) {
-
   const stacks = await loadStackYaml(stackCfg, stackFilters);
 
   // if no stacks exist or no stacks match filter:
@@ -67,6 +67,20 @@ async function loadStacks(stackCfg, stackFilters, schema, stackDefaults) {
       }
       return stack;
     }).value();
+}
+
+async function loadStackGroups(stackCfg, stackGroups, schema, stackDefaults) {
+  const stacks = await loadStacks(stackCfg, [], schema, stackDefaults);
+
+  validateStackGroups(stackGroups, stacks);
+
+  return _.map(
+    stackGroups,
+    (stackGroup) => ({
+      name: stackGroup.name,
+      stacks: _.map(stackGroup.stacks, (stackName) => _.find(stacks, (x) => x.name == stackName)),
+    })
+  );
 }
 
 function loadNodeCfConfig(cfg) {
@@ -168,7 +182,7 @@ function filterStacks(stacks, stackFilters) {
   const stackNames = _.map(stacks.stacks, stack => stack.name);
   const diff = _.difference(stackFilters, stackNames);
   if ( diff.length !== 0 ) {
-    throw(`Invalid stack name(s) passed: ${diff}`);
+    throw new Error(`Invalid stack name(s) passed: ${diff}`);
   }
   return _.filter(stacks.stacks, stack => stackFilters.includes(stack.name));
 }
@@ -212,6 +226,45 @@ function isValidJsonSchema(schema, spec) {
   return true;
 }
 
+function validateStackGroups(stackGroups, stacks) {
+  if (_.isUndefined(stackGroups)) {
+    return [];
+  }
+
+  if(!isValidJsonSchema(schema.stackGroupsSchema, stackGroups)) {
+    throw new Error('stack groups schema failed validation');
+  }
+
+  const duplicateGroupNames = _.chain(stackGroups)
+    .groupBy('name')
+    .pickBy((v, k) => v.length > 1)
+    .keys()
+    .value();
+  if(duplicateGroupNames.length > 0) {
+    throw new Error(`the following stackGroup(s) can only be defined once: ${duplicateGroupNames.join(', ')}`);
+  }
+
+  const stacksToGroups = _.flatMap(stackGroups, (x) => _.map(x.stacks, (y) => [y, x.name]));
+
+  const undefinedStackNames = _.chain(stacksToGroups)
+    .map((x) => x[0])
+    .uniqBy()
+    .filter((x) => !_.find(stacks, ({name}) => name == x))
+    .value();
+  if(undefinedStackNames.length > 0) {
+    throw new Error(`the following stack(s) need to be defined in the stacks file: ${undefinedStackNames.join(', ')}`);
+  }
+
+  const duplicateStackNames = _.chain(stacksToGroups)
+    .groupBy((x) => x[0])
+    .pickBy((v, k) => v.length > 1)
+    .keys()
+    .value();
+  if(duplicateStackNames.length > 0) {
+    throw new Error(`the following stack(s) cannot appear in more than one group: ${duplicateStackNames.join(', ')}`);
+  }
+}
+
 module.exports = {
   parseExtraVars: parseExtraVars,
   parseArgs: parseArgs,
@@ -221,6 +274,8 @@ module.exports = {
   loadNodeCfConfig: loadNodeCfConfig,
   isValidJsonSchema: isValidJsonSchema,
   loadStacks: loadStacks,
+  loadStackGroups: loadStackGroups,
   loadYaml: loadYaml,
-  parseStringArrays: parseStringArrays
+  parseStringArrays: parseStringArrays,
+  validateStackGroups: validateStackGroups,
 };

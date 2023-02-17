@@ -16,6 +16,7 @@ const DEFAULT_CONFIG_FILE_LOCATION = "./config";
 
 // for mocking:
 var loadStacks = config.loadStacks;
+var loadStackGroups = config.loadStackGroups;
 
 function usage() {
   /* eslint-disable */
@@ -64,7 +65,7 @@ function configAws(params) {
 
 async function loadEnvironment(argv) {
 
-  var args, cfg, nodeCfCfg, nj, globalVars, envFileVars, stacks;
+  var args, cfg, nodeCfCfg, nj, globalVars, envFileVars, stackGroups;
 
   try {
     args = config.parseArgs(
@@ -164,16 +165,27 @@ async function loadEnvironment(argv) {
   }
 
   try {
-    // stacks passed in cli can override stacks defined in env file
-    let rawStackFilters = args.stackFilters || envVars.stacks;
-    let stackFilters =
-      ( _.isString(rawStackFilters) ?
-        config.parseStringArrays(rawStackFilters) :
-        rawStackFilters);
-    stacks = await loadStacks(nodeCfCfg.stackCfg,
-      stackFilters,
-      schema.cfStackConfigSchema,
-      nodeCfCfg.stackDefaults);
+    if (!!envVars.stackGroups) {
+      stackGroups = await loadStackGroups(
+        nodeCfCfg.stackCfg,
+        envVars.stackGroups,
+        schema.cfStackConfigSchema,
+        nodeCfCfg.stackDefaults
+      );
+    } else {
+      // stacks passed in cli can override stacks defined in env file
+      let rawStackFilters = args.stackFilters || envVars.stacks;
+      let stackFilters = _.isString(rawStackFilters) ? config.parseStringArrays(rawStackFilters) : rawStackFilters;
+
+      const stacks = await loadStacks(
+        nodeCfCfg.stackCfg,
+        stackFilters,
+        schema.cfStackConfigSchema,
+        nodeCfCfg.stackDefaults
+      );
+
+      stackGroups = _.map(stacks, (x) => ({name: x.name, stacks: [x]}))
+    }
   } catch (e) {
     console.error(`Failed to load stack config: `, e);
     process.exit(1);
@@ -181,15 +193,15 @@ async function loadEnvironment(argv) {
 
   configAws({ profile: args.profile, region: envVars.region });
 
-  return { action: args.action, stacks: stacks, envVars: envVars, nj: nj, nodeCfCfg: nodeCfCfg };
+  return { action: args.action, stackGroups: stackGroups, envVars: envVars, nj: nj, nodeCfCfg: nodeCfCfg };
 }
 
-async function run(action, stacks, envVars, nj, nodeCfCfg) {
+async function run(action, stackGroups, envVars, nj, nodeCfCfg) {
 
   switch (action) {
     case 'deploy':
       try {
-        await nodeCf.deploy(stacks, envVars, nj, nodeCfCfg);
+        await nodeCf.deploy(stackGroups, envVars, nj, nodeCfCfg);
       } catch (e) {
         console.error(`deployment failed: `, e);
         process.exit(1);
@@ -197,7 +209,7 @@ async function run(action, stacks, envVars, nj, nodeCfCfg) {
       break;
     case 'validate':
       try {
-        await nodeCf.validate(stacks, envVars, nj, nodeCfCfg);
+        await nodeCf.validate(stackGroups, envVars, nj, nodeCfCfg);
       } catch (e) {
         console.error(`validation failed: `, e);
         process.exit(1);
@@ -206,7 +218,7 @@ async function run(action, stacks, envVars, nj, nodeCfCfg) {
     case 'delete':
       try {
         // note that stack order is reversed prior to deletion:
-        await nodeCf.deleteStacks(stacks.reverse(), envVars, nj, nodeCfCfg);
+        await nodeCf.deleteStacks(stackGroups.reverse(), envVars, nj, nodeCfCfg);
       } catch (e) {
         console.error(`delete failed: `, e);
         process.exit(1);

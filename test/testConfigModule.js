@@ -269,4 +269,77 @@ describe('parseStringArrays', () => {
     assert.deepEqual(["testStack1"], config.parseStringArrays('     testStack1   '))
   })
 });
+
+describe('validateStackGroups', () => {
+  const stacks = [{name: "lorem"}, {name: "ipsum"}, {name: "dolor"}];
+  it("should pass with undefined", () => {
+    assert.doesNotThrow(() => config.validateStackGroups(), Error);
+    assert.doesNotThrow(() => config.validateStackGroups(undefined), Error);
+  });
+  it("should pass with empty array", () => {
+    assert.doesNotThrow(() => config.validateStackGroups([]), Error);
+  });
+  it("should pass with valid array", () => {
+    assert.doesNotThrow(() => config.validateStackGroups([{name: "foo", stacks: []}]), Error);
+    assert.doesNotThrow(() => config.validateStackGroups([{name: "foo", stacks: ["lorem"]}], stacks), Error);
+    assert.doesNotThrow(() => config.validateStackGroups([{name: "foo", stacks: ["lorem"]}, {name: "bar", stacks: ["ipsum"]}], stacks), Error);
+  });
+  it("should throw error with string", () => {
+    assert.throws(() => config.validateStackGroups(true), Error);
+    assert.throws(() => config.validateStackGroups("[testStack1 testStack2 testStack3]"), Error);
+  });
+  it("should throw error with invalid array", () => {
+    assert.throws(() => config.validateStackGroups([{namex: "foo", stacks: []}]), Error);
+    assert.throws(() => config.validateStackGroups([{name: undefined, stacks: []}]), Error);
+    assert.throws(() => config.validateStackGroups([{name: "foo", stacksx: []}]), Error);
+    assert.throws(() => config.validateStackGroups([{name: "foo", stacks: undefined}]), Error);
+    assert.throws(() => config.validateStackGroups([{name: "foo", stacks: [{}]}]), Error);
+    assert.throws(() => config.validateStackGroups([{name: "foo", stacks: [1]}]), Error);
+    assert.throws(() => config.validateStackGroups([{name: "foo", stacks: ["lorem"]}], [{name: "ipsum"}]), Error);
+  });
+  it("should throw error with a stack in multiple groups", () => {
+    assert.throws(
+      () => config.validateStackGroups([{name: "foo", stacks: ["lorem"]}, {name: "bar", stacks: ["lorem"]}], stacks),
+      Error
+    );
+  });
+  it("should throw error with groups with the same name", () => {
+    assert.throws(
+      () => config.validateStackGroups([{name: "foo", stacks: ["lorem"]}, {name: "foo", stacks: ["ipsum"]}], stacks),
+      Error
+    );
+  });
+});
+describe('loadStackGroups', () => {
+  before(() => {
+    config.__set__({
+      isValidJsonSchema: () => true,
+      loadStackYaml: () => [{name: "lorem"}, {name: "ipsum"}, {name: "dolor"}]
+    });
+  });
+  it('should return single stack group', async () => {
+    const stackGroups = [
+      {name: "foo", stacks: ["lorem", "dolor"]},
+    ];
+    const result = await config.loadStackGroups({}, stackGroups, {}, {})
+    assert.deepEqual(result, [
+      {name: "foo", stacks: [{name: "lorem"}, {name: "dolor"}]},
+    ]);
+  });
+  it('should return multiple stack groups', async () => {
+    const stackGroups = [
+      {name: "foo", stacks: ["lorem"]},
+      {name: "bar", stacks: ["ipsum"]},
+    ];
+    const result = await config.loadStackGroups({}, stackGroups, {}, {})
+    assert.deepEqual(result, [
+      {name: "foo", stacks: [{name: "lorem"}]},
+      {name: "bar", stacks: [{name: "ipsum"}]},
+    ]);
+  });
+  after(() => config.__set__({
+    isValidJsonSchema: isValidJsonSchemaOrg,
+    loadStackYaml: loadStackYamlOrg
+  }));
+});
   /* eslint-enable */

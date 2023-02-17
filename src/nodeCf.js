@@ -86,7 +86,7 @@ class CfStack {
         lambdaArtifact, this.nodeCfConfig.s3LambdaDir);
       lambdaExports.bucket = this.infraBucket;
       lambdaExports.key = s3Resp.Key;
-      debug(`cfStack.doLambdaArtifacts: ${JSON.stringify(lambdaExports)}`);
+      debug(`CfStack.doLambdaArtifacts: ${JSON.stringify(lambdaExports)}`);
       return lambdaExports;
     }
   }
@@ -159,8 +159,8 @@ class CfStack {
   }
 
   async deploy() {
-  this.deployName = await this.renderObj(this.deployName);
-  console.log(`deploying ${this.deployName}`);
+    this.deployName = await this.renderObj(this.deployName);
+    console.log(`deploying ${this.deployName}`);
 
     await this.lateInit();
 
@@ -216,6 +216,53 @@ class CfStack {
     if (this.deleteUploadedTemplates)
       await s3Delete(s3Cli, s3Resp.Bucket, s3Resp.Key);
     console.log(`${this.name} is a valid Cloudformation template`);
+  }
+}
+
+class CfStackGroup {
+  // NOTE: not to be confused with [stack sets](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/stacksets-concepts.html); stack lists are an in-house concept
+  constructor(stackGroup, envVars, nj, nodeCfConfig) {
+    this.name = stackGroup.name;
+    this.stacks = stackGroup.stacks;
+    this.envVars = envVars;
+    this.nj = nj;
+    this.nodeCfConfig = nodeCfConfig;
+  }
+
+  async deploy() {
+    console.log(`deploying stack group ${this.name} with ${this.stacks.length} stack(s)`);
+
+    debug('envVars: ', JSON.stringify(envVars));
+
+    const promises = _.map(this.stacks, async(it) => {
+      debug('stack: ', JSON.stringify(it));
+      const cfStack = new CfStack(it, _.cloneDeep(this.envVars), this.nj, this.nodeCfConfig);
+      await cfStack.deploy();
+    });
+
+    return Promise.all(promises);
+  }
+
+  async delete() {
+    console.log(`deleting stack group ${this.name} with ${this.stacks.length} stack(s)`);
+
+    const promises = _.map(this.stacks, async(it) => {
+      const cfStack = new CfStack(it, _.cloneDeep(this.envVars), this.nj, this.nodeCfConfig);
+      await cfStack.delete();
+    });
+
+    return Promise.all(promises);
+  }
+
+  async validate() {
+    console.log(`validating stack group ${this.name} with ${this.stacks.length} stack(s)`);
+
+    const promises = _.map(this.stacks, async(it) => {
+      const cfStack = new CfStack(it, _.cloneDeep(this.envVars), this.nj, this.nodeCfConfig);
+      await cfStack.validate();
+    });
+
+    return Promise.all(promises);
   }
 }
 
@@ -439,31 +486,30 @@ async function getAwsCredentials(role) {
   return getAwsRoleCreds(role, creds);
 }
 
-async function validate(stacks, envVars, nj, nodeCfConfig) {
-  return Promise.all(stacks.map(async(it) => {
-    const cfStack = new CfStack(it, envVars, nj, nodeCfConfig);
-    await cfStack.validate();
+async function validate(stackGroups, envVars, nj, nodeCfConfig) {
+  return Promise.all(stackGroups.map(async(it) => {
+    const cfStackGroup = new CfStackGroup(it, envVars, nj, nodeCfConfig);
+    await cfStackGroup.validate();
   }));
 }
 
-async function deploy(stacks, envVars, nj, nodeCfConfig) {
-  return Promise.each(stacks, async(it) => {
-    const cfStack = new CfStack(it, _.cloneDeep(envVars), nj, nodeCfConfig);
-    await cfStack.deploy();
-    debug('stack: ', JSON.stringify(it));
-    debug('envVars: ', JSON.stringify(envVars));
+async function deploy(stackGroups, envVars, nj, nodeCfConfig) {
+  return Promise.each(stackGroups, async(it) => {
+    const cfStackGroup = new CfStackGroup(it, envVars, nj, nodeCfConfig);
+    await cfStackGroup.deploy();
   });
 }
 
-async function deleteStacks(stacks, envVars, nj, nodeCfConfig) {
-  return Promise.each(stacks, async(it) => {
-    const cfStack = new CfStack(it, envVars, nj, nodeCfConfig);
-    await cfStack.delete();
+async function deleteStacks(stackGroups, envVars, nj, nodeCfConfig) {
+  return Promise.each(stackGroups, async(it) => {
+    const cfStackGroup = new CfStackGroup(it, envVars, nj, nodeCfConfig);
+    await cfStackGroup.delete();
   });
 }
 
 module.exports = {
     CfStack: CfStack,
+    CfStackGroup: CfStackGroup,
     validate: validate,
     deleteStacks: deleteStacks,
     deploy: deploy,

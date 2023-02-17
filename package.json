@@ -1,6 +1,6 @@
 {
   "name": "@healthmine/nodecf",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "for cloudformation-based deployments",
   "main": "index.js",
   "scripts": {
@@ -16,20 +16,20 @@
     "url": "git://github.com/healthmine/nodeCf.git"
   },
   "dependencies": {
-    "ajv": "^7.1.0",
-    "aws-sdk": "^2.842.0",
+    "ajv": "^8.12.0",
+    "aws-sdk": "^2.1312.0",
     "bluebird": "^3.7.2",
     "debug": "^4.1.1",
     "js-yaml": "^4.0.0",
-    "lodash": "^4.17.19",
-    "minimist": "^1.2.5",
-    "nunjucks": "^3.2.1",
+    "lodash": "^4.17.21",
+    "minimist": "^1.2.8",
+    "nunjucks": "^3.2.3",
     "rxjs": "^6.5.4"
   },
   "devDependencies": {
     "assert": "^2.0.0",
     "babel-eslint": "^10.1.0",
-    "eslint": "^7.19.0",
+    "eslint": "^7.32.0",
     "mocha": "^8.3.0",
     "rewire": "^5.0.0",
     "sinon": "^9.0.1"
