@@ -99,7 +99,7 @@ function loadNodeCfConfig(cfg) {
     stackCfg: `${localCfgDir}/stacks.yml`,
     deleteUploadedTemplates: true,
     stackDefaults: {
-      capabilities: [ 'CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM' ],
+      capabilities: [ 'CAPABILITY_IAM', 'CAPABILITY_NAMED_IAM', 'CAPABILITY_AUTO_EXPAND' ],
       timeout: 45,
       tags: {
         // these are rendered at deployment time:
